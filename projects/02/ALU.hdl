@@ -43,4 +43,20 @@ CHIP ALU {
 
     PARTS:
    // Put you code here:
+    Mux16 (a=x, b[0..15]=false, sel=zx, out=x1);
+    Not16 (in=x1, out=notx1);
+    Mux16 (a=x1, b=notx1, sel=nx, out=x2);
+    Mux16 (a=y, b[0..15]=false, sel=zy, out=y1);
+    Not16 (in=y1, out=noty1);
+    Mux16 (a=y1, b=noty1, sel=ny, out=y2);
+    Add16 (a=x2, b=y2, out=x2py2);
+    And16 (a=x2, b=y2, out=x2ay2);
+    Mux16 (a=x2ay2, b=x2py2, sel=f, out=xy);
+    Not16 (in=xy, out=notxy);
+    Mux16 (a=xy, b=notxy, sel=no, out=out, out[0..7]=out1, out[8..15]=out2, out[15]=msbout);
+    Or8Way (in=out1, out=z1);
+    Or8Way (in=out1, out=z2); //some potential pitfall w.r.t. subbusing see https://www.coursera.org/learn/build-a-computer/discussions/weeks/2/threads/9VYr3LzkEeeK2BJ0oEsgKA
+    Or (a=z1, b=z2, out=z);
+    Not (in=z, out=zr);
+    And (a=msbout, b=true, out=ng);
 }
