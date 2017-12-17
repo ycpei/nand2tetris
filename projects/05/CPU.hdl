@@ -40,4 +40,41 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
+
+    Nand(a=instruction[15], b=instruction[5], out=c7);
+    Mux16(a=aluout, b=instruction, sel=c7, out=out1);
+
+    Not(in=instruction[15], out=notd1);
+    Or(a=instruction[5], b=notd1, out=c8);
+    ARegister(in=out1, load=c8, out=out2, out[0..14]=addressM);
+
+    And(a=instruction[15], b=instruction[12], out=c9);
+    Mux16(a=out2, b=inM, sel=c9, out=y);
+
+    And(a=instruction[15], b=instruction[4], out=c10);
+    DRegister(in=aluout, load=c10, out=x);
+
+    ALU(x=x, y=y, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=aluout, out=outM, ng=ng, zr=zr);
+    Not(in=ng, out=ps);
+    Not(in=zr, out=nz);
+
+    And(a=ps, b=nz, out=out3);
+    And(a=out3, b=instruction[0], out=isjump1);
+
+    And(a=ps, b=zr, out=out4);
+    And(a=out4, b=instruction[1], out=isjump2);
+
+    And(a=ng, b=nz, out=out5);
+    And(a=out5, b=instruction[2], out=isjump3);
+
+    Or(a=isjump1, b=isjump2, out=isjump4);
+    Or(a=isjump3, b=isjump4, out=isjump5);
+    And(a=instruction[15], b=isjump5, out=isjump);
+
+    Not(in=isjump, out=isnotjump);
+
+    PC(in=out2, load=isjump, inc=isnotjump, reset=reset, out[0..14]=pc);
+
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
 }
