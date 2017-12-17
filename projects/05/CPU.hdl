@@ -76,5 +76,7 @@ CHIP CPU {
     PC(in=out2, load=isjump, inc=isnotjump, reset=reset, out[0..14]=pc);
 
     And(a=instruction[15], b=instruction[3], out=writeM);
+    //And(a=instruction[15], b=instruction[3], out=out6);
+    //DFF(in=out6, out=writeM);
 
 }
