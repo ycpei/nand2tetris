@@ -37,8 +37,7 @@ CHIP Memory {
     Or8Way(in=address[5..12], out=or2);
     Or(a=or1, b=or2, out=ksel);
 
-    Keyboard(out=out1);
-    Mux16(a=out1, b=in, sel=kload, out=kout);
+    Keyboard(out=kout);
 
     Mux16(a=kout, b=false, sel=ksel, out=fout1);
     Mux16(a=sout, b=fout1, sel=address[13], out=fout2);
