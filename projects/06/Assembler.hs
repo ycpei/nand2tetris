@@ -2,16 +2,17 @@ import Numeric (showIntAtBase)
 import Data.Char (intToDigit)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.List.Split (splitOn)
+import Data.List.Split (splitOn, splitOneOf)
 
 parseLine :: Map [Char] [Char] -> [Char] -> [Char]
 parseLine table (x:xs)
-  | x == '@' && (head xs `elem` ['0'..'9']) = int2Bin16 $ read xs
-  | x == '@' = table Map.! xs
-  | '=' `elem` xs = let [dests, alu] = splitOn "=" (x:xs) in "111" ++ (parseALU alu) ++ (parseDests dests) ++ "000"
-  | ';'
+  | x == '@' && (head xs `elem` ['0'..'9']) = (int2Bin16 $ read xs) ++ "\n"
+  | x == '@' = table Map.! xs ++ "\n"
+  | '=' `elem` (x:xs) && ';' `elem` (x:xs) = let [dest, comp, jump] = splitOneOf "=;" (x:xs) in "111" ++ (parseComp comp) ++ (parseDest dest) ++ (parseJump jump) ++ "\n"
+  | '=' `elem` (x:xs) = let [dest, comp] = splitOn "=" (x:xs) in "111" ++ (parseComp comp) ++ (parseDest dest) ++ "000" ++ "\n"
+  | ';' `elem` (x:xs) = let [comp, jump] = splitOn ";" (x:xs) in "111" ++ (parseComp comp) ++ "000" ++ (parseJump jump) ++ "\n"
 
-parseALU xs = case xs of
+parseComp xs = case xs of
   "0" -> "0101010"
   "1" -> "0111111"
   "-1" -> "0111010"
@@ -47,9 +48,18 @@ parseALU xs = case xs of
   "D|M" -> "1010101"
   "M|D" -> "1010101"
 
-
-parseDests xs = (f 'A'):(f 'D'):(f 'M'):[]
+parseDest xs = (f 'A'):(f 'D'):(f 'M'):[]
   where f x = if x `elem` xs then '1' else '0'
+
+parseJump xs = case xs of
+  "" -> "000"
+  "JGT" -> "001"
+  "JEQ" -> "010"
+  "JGE" -> "011"
+  "JLT" -> "100"
+  "JNE" -> "101"
+  "JLE" -> "110"
+  "JMP" -> "111"
 
 int2Bin x = showIntAtBase 2 intToDigit x ""
 
@@ -63,6 +73,9 @@ initTable = Map.fromList $ (\(x, y) -> (x, int2Bin16 y)) <$> ("SP", 0):("LCL", 1
 stripJunk :: [Char] -> [[Char]]
 stripJunk xs = filter (not . null) $ (filter (not . (flip elem " \t")) . head . (splitOn "//")) <$> splitOn "\n" xs
 
+stripLabels :: [[Char]] -> [[Char]]
+stripLabels = filter (not . (elem '('))
+
 addSyms :: [[Char]] -> Int -> Int -> Map [Char] [Char] -> Map [Char] [Char]
 addSyms [] _ _ table = table
 addSyms ((hd:tl):rest) addr vaddr table
@@ -70,4 +83,11 @@ addSyms ((hd:tl):rest) addr vaddr table
   | hd == '@' && tl `Map.notMember` table = addSyms rest (addr + 1) (vaddr + 1) (Map.insert tl (int2Bin16 vaddr) table)
   | otherwise = addSyms rest (addr + 1) vaddr table
 
---addSyms (stripJunk input) 0 16 initTable
+parseCode :: [Char] -> [Char]
+parseCode code = mconcat $ parseLine (addSyms codeWithoutJunk 0 16 initTable) <$> codeWithoutLabels
+  where codeWithoutJunk = stripJunk code
+        codeWithoutLabels = stripLabels codeWithoutJunk
+
+main = do
+  code <- getContents
+  putStr $ parseCode code
