@@ -15,6 +15,32 @@ parse' op [] n
           f "or" = '|'; f "neg" = '-'; f "not" = '!'
 
 parse' "push" ["constant", x] _ = "@" ++ x ++ "\nD=A\n" ++ push "D"
+parse' cmd [seg, x] _ | seg `elem` ["local", "argument", "this", "that"] =
+  case cmd of 
+    | "push" -> getAddr seg x ++ push "D"
+    | "pop" -> getAddr seg x ++ "@R13\nM=D\n" ++ pop "M" ++ "@R13\nA=M\nM=D\n"
+
+parse' cmd [seg, x] _ | seg `elem` ["pointer", "temp"] = 
+  case cmd of 
+    | "push" -> getAddr' seg x ++ "D=M\n" ++ push "D"
+    | "pop" -> pop "M" ++ getAddr' seg x ++ "M=D\n"
+
+parse' cmd ["static", x] _ =
+  case cmd of
+    | "push" -> getAddr'' x ++ "D=M\n" ++ push "D"
+    | "pop" -> pop "M" ++ getAddr'' x ++ "M=D\n"
+
+getAddr seg x = "@" ++ seg2Lab seg ++ "\nD=M\n@" ++ x ++ "\nA=D+M\nD=M\n"
+
+getAddr' seg x = "@" ++ show (read x + (if seg == "pointer" then 3 else 5)) ++ "\n"
+
+getAddr'' x = "@" ++ filename ++ "." ++ x ++ "\n"
+
+seg2Lab seg = case seg of
+  | "local" -> "LCL"
+  | "argument" -> "ARG"
+  | "this" -> "THIS" 
+  | "that" -> "THAT"
 
 push :: [Char] -> [Char]
 push xs = "@SP\nA=M\nM=" ++ xs ++ "\n@SP\nM=M+1\n"
