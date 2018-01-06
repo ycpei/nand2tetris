@@ -6,9 +6,12 @@ import Data.List (elemIndex)
 import System.Directory (listDirectory)
 
 --preamble = "@256\nD=A\n@SP\nM=D\n"
-preamble = ""
+preamble = setSP ++ callInit
+  where setSP = "@256\nD=A\n@SP\nM=D\n"
+        callInit = parse' "call" ["Sys.init", "0"] 0 "" ""
 
-epilogue = "(END)\n@END\n0;JMP"
+--epilogue = "(END)\n@END\n0;JMP"
+epilogue = ""
 
 -- parse' command restOfCommand vmLineNumber fileName functionName = asm code
 parse' :: [Char] -> [[Char]] -> Int -> [Char] -> [Char] -> [Char]
@@ -22,9 +25,9 @@ parse' "return" [] _ _ _ = backupLCL ++ popToARG ++ moveSP ++ restore "THAT"
         restore name = "@R13\nAM=M-1\nD=M\n@" ++ name ++ "\nM=D\n"
         gotoRet = "@R13\nA=M-1\nA=M\n0;JMP\n"
 
-parse' op [] n _ _
+parse' op [] n fileName _
   | op `elem` ["add", "sub", "and", "or"] = pop "M" ++ pop ('M':(f op):"D") ++ push "D"
-  | op `elem` ["eq", "gt", "lt"] = pop "M" ++ pop "M-D" ++ ifThenElse op n
+  | op `elem` ["eq", "gt", "lt"] = pop "M" ++ pop "M-D" ++ ifThenElse op n fileName
   | otherwise = pop "M" ++ push (f op:"D")
     where f "add" = '+'; f "sub" = '-'; f "and" = '&'; 
           f "or" = '|'; f "neg" = '-'; f "not" = '!'
@@ -54,7 +57,15 @@ parse' "if-goto" [x] _ _ fName = pop "M" ++ "@" ++ fName ++ "$" ++ x ++ "\nD;JNE
 
 parse' "function" [f, n] _ _ _ = "(" ++ f ++ ")\n" ++ (mconcat $ replicate (read n) $ push "0")
 
---parse' "call" [f, m] n _ = 
+parse' "call" [f, m] n _ _ = pushRet ++ save "LCL" ++ save "ARG" ++ save "THIS" 
+                             ++ save "THAT" ++ setLCL ++ setARG ++ gotoF ++ placeRet
+  where pushRet = "@RET" ++ show n ++ "\nD=A\n" ++ push "D"
+        save x = "@" ++ x ++ "\nD=M\n" ++ push "D"
+        setLCL = "@SP\nD=M\n@LCL\nM=D\n"
+        setARG = "@5\nD=D-A\n@" ++ m ++ "\nD=D-A\n@ARG\nM=D\n"
+        placeRet = "(RET" ++ show n ++ ")\n"
+        gotoF = "@" ++ f ++ "\n0;JMP\n" 
+--To do the return-addr: generate label RET582 if say n==582, place the label after the goto f jump
 
 getAddr seg x = "@" ++ seg2Lab seg ++ "\nD=M\n@" ++ x ++ "\nD=A+D\n"
 
@@ -71,11 +82,13 @@ seg2Lab seg = case seg of
 push :: [Char] -> [Char]
 push xs = "@SP\nA=M\nM=" ++ xs ++ "\n@SP\nM=M+1\n"
 
-ifThenElse :: [Char] -> Int -> [Char]
-ifThenElse cond n = "@" ++ cond' ++ show n ++ "\nD;J" ++ cond' ++ "\n" ++ push "0"
-                  ++ "@ENDIF" ++ cond' ++ show n ++ "\n0;JMP\n(" ++ cond' ++ show n ++ ")\n" 
-                  ++ push "-1" ++ "(ENDIF" ++ cond' ++ show n ++ ")\n"
-  where cond' = toUpper <$> cond
+-- should change @label to @IFlabel
+ifThenElse :: [Char] -> Int -> [Char] -> [Char]
+ifThenElse cond n fileName = "@IF" ++ label ++ "\nD;J" ++ cond' ++ "\n" ++ push "0"
+                             ++ "@ENDIF" ++ label ++ "\n0;JMP\n(IF" ++ label ++ ")\n" 
+                             ++ push "-1" ++ "(ENDIF" ++ label ++ ")\n"
+  where label = fileName ++ show n
+        cond' = toUpper <$> cond
 
 pop :: [Char] -> [Char]
 pop xs = "@SP\nAM=M-1\nD=" ++ xs ++ "\n"
@@ -93,7 +106,10 @@ isEmptyLine :: [Char] -> Bool
 isEmptyLine = null . filter (not . flip elem " \t") 
 
 parseCode :: [Char] -> [Char] -> [Char]
-parseCode xs filename = preamble ++ (parseline (stripJunk xs) 0 "" filename "") ++ epilogue
+parseCode xs filename = (parseline (stripJunk xs) 0 "" filename "")
+
+parseCodes :: [[Char]] -> [[Char]] -> [Char]
+parseCodes codes filenames = preamble ++ (mconcat $ zipWith parseCode codes filenames) ++ epilogue
 
 replCrWithNl :: [Char] -> [Char]
 replCrWithNl = fmap cr2nl 
@@ -112,6 +128,6 @@ main = do
   let ofPath = dir ++ (snd $ lastSplit '/' $ init dir) ++ ".asm"
   let filenames = removeExt <$> filesWODir
   codes <- sequence $ readFile <$> vmFiles
-  writeFile ofPath (mconcat $ zipWith parseCode codes filenames)
+  writeFile ofPath $ parseCodes codes filenames
     where isVMfile xs = drop (length xs - 3) xs == ".vm"
           removeExt xs = take (length xs - 3) xs
