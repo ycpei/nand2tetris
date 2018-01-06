@@ -1,7 +1,3 @@
-@256
-D=A
-@SP
-M=D
 @0
 D=A
 @SP
@@ -21,7 +17,7 @@ D=M
 @R13
 A=M
 M=D
-(LOOP_START)
+($LOOP_START)
 @ARG
 D=M
 @0
@@ -122,7 +118,7 @@ M=M+1
 @SP
 AM=M-1
 D=M
-@LOOP_START
+@$LOOP_START
 D;JNE
 @LCL
 D=M
@@ -135,6 +131,3 @@ A=M
 M=D
 @SP
 M=M+1
-(END)
-@END
-0;JMP

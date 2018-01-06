@@ -1,3 +1,5 @@
+--usage: ./VMTranslator path/to/dir/
+--will produce path/to/dir/dir.asm from path/to/dir/*.vm
 import Data.Char (toUpper)
 import Data.List.Split (splitOn)
 import System.Environment (getArgs)
@@ -6,6 +8,9 @@ import Data.List (elemIndex)
 import System.Directory (listDirectory)
 
 --preamble = "@256\nD=A\n@SP\nM=D\n"
+--For ProgramFlow and SimpleFunction preamble should be set as ""
+--preamble = ""
+--For StaticsTest and FibonacciElement, preamble should be setSP ++ callInit
 preamble = setSP ++ callInit
   where setSP = "@256\nD=A\n@SP\nM=D\n"
         callInit = parse' "call" ["Sys.init", "0"] 0 "" ""
@@ -16,14 +21,15 @@ epilogue = ""
 -- parse' command restOfCommand vmLineNumber fileName functionName = asm code
 parse' :: [Char] -> [[Char]] -> Int -> [Char] -> [Char] -> [Char]
 
-parse' "return" [] _ _ _ = backupLCL ++ popToARG ++ moveSP ++ restore "THAT" 
+parse' "return" [] _ _ _ = backupLCL ++ backupRet ++ popToARG ++ moveSP ++ restore "THAT" 
                            ++ restore "THIS" ++ restore "ARG" ++ restore "LCL"
                            ++ gotoRet
   where backupLCL = "@LCL\nD=M\n@R13\nM=D\n"
+        backupRet = "@5\nA=D-A\nD=M\n@R14\nM=D\n"
         popToARG = pop "M" ++ "@ARG\nA=M\nM=D\n"
         moveSP = "@ARG\nD=M+1\n@SP\nM=D\n"
         restore name = "@R13\nAM=M-1\nD=M\n@" ++ name ++ "\nM=D\n"
-        gotoRet = "@R13\nA=M-1\nA=M\n0;JMP\n"
+        gotoRet = "@R14\nA=M\n0;JMP\n"
 
 parse' op [] n fileName _
   | op `elem` ["add", "sub", "and", "or"] = pop "M" ++ pop ('M':(f op):"D") ++ push "D"

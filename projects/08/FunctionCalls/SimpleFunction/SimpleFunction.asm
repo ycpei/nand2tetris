@@ -98,6 +98,11 @@ M=M+1
 D=M
 @R13
 M=D
+@5
+A=D-A
+D=M
+@R14
+M=D
 @SP
 AM=M-1
 D=M
@@ -128,10 +133,6 @@ AM=M-1
 D=M
 @LCL
 M=D
-@R13
-A=M-1
+@R14
 A=M
-0;JMP
-(END)
-@END
 0;JMP
