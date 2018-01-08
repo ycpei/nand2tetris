@@ -1,0 +1,34 @@
+class KGame{
+    field Board board;
+
+    constructor KGame new() {
+        let board = Board.new();
+        do board.draw();
+        return this;
+    }
+
+    method void dispose() {
+        do board.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void run() {
+        var int key, dir;
+        var boolean exit;
+        let key = 0;
+        let exit = false;
+        while (~exit) {
+            while ((key < 130) | (key > 133)) {
+                let key = Keyboard.keyPressed();
+            }
+            let dir = key - 130;
+            while (~(key = 0)) {
+                let key = Keyboard.keyPressed();
+            }
+            do board.next(dir);
+            do board.draw();
+        }
+        return;
+    }
+}
