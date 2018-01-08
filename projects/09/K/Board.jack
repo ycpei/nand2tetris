@@ -194,6 +194,13 @@ class Board {
     }
 
     method void addTile(){
+        var Array t;
+        let t = grid[1];
+        if (t[1] = 32) {
+            let t[1] = 65;
+        }
+        return;
+        /*
         var int x, y, r, c;
         var char z;
         var Array t;
@@ -214,6 +221,7 @@ class Board {
         }
         let t[c] = z;
         return;
+        */
     }
 
     method void transform(char dir){
@@ -241,9 +249,9 @@ class Board {
     }
 
     method void next(char dir){
-        do addTile();
         let nTurn = nTurn + 1;
         do transform(dir);
+        do addTile();
         return;
     }
 
@@ -252,15 +260,23 @@ class Board {
         var Array t;
         let r = 9;
         let c = 30;
+
+        do Output.moveCursor(r - 1, c - 1);
+        do Output.printString("+----+");
+        do Output.moveCursor(r + 4, c - 1);
+        do Output.printString("+----+");
+
         let i = 0;
         while (i < 4) {
             let j = 0;
-            do Output.moveCursor(r + i, c);
+            do Output.moveCursor(r + i, c - 1);
+            do Output.printString("|");
             let t = grid[i];
             while (j < 4) {
                 do Output.printChar(t[j]);
                 let j = j + 1;
             }
+            do Output.printString("|");
             let i = i + 1;
         }
         return;
