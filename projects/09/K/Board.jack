@@ -1,6 +1,7 @@
 class Board {
     field Array grid;
     field int nTurn;
+    field int seed;
 
     constructor Board new() {
         var int i, j;
@@ -20,6 +21,7 @@ class Board {
         let t = grid[0];
         let t[0] = 65;
         let nTurn = 0;
+        let seed = 0;
         return this;
     }
 
@@ -195,33 +197,43 @@ class Board {
 
     method void addTile(){
         var Array t;
+        var int r, c, parity, newTile;
+        /*
         let t = grid[1];
         if (t[1] = 32) {
             let t[1] = 65;
         }
-        return;
-        /*
-        var int x, y, r, c;
-        var char z;
-        var Array t;
-        let x = nTurn;
-        let y = 23 * x * x + 79;
-        let x = y - (y / 16 * 16);
-        let r = x / 4;
-        let c = x - (r * 4);
-        let z = 65;
-        let t = grid[r];
-        while (t[c] > 64) {
-            let y = 23 * x * x + 79;
-            let x = y - (y / 16 * 16);
-            let r = x / 4;
-            let c = x - (r * 4);
-            let z = 131 - z;
-            let t = grid[r];
-        }
-        let t[c] = z;
-        return;
         */
+        let seed = seed * 25173 + 13849;
+        if (seed < 0) {
+            let seed = - seed;
+        }
+
+        if (seed - (seed / 2 * 2) = 0) {
+            let parity = 1;
+        } else {
+            let parity = -1;
+        }
+
+        let seed = seed - (seed / 16 * 16);
+        let r = seed / 4;
+        let c = seed - (4 * r);
+        let t = grid[r];
+        let newTile = 65;
+
+        while (t[c] > 64){
+            let seed = seed + parity;
+            if (seed < 0) {
+                let seed = 15;
+            }
+            let seed = seed - (seed / 16 * 16);
+            let r = seed / 4;
+            let c = seed - (4 * r);
+            let t = grid[r];
+            let newTile = 131 - newTile;
+        }
+        let t[c] = newTile;
+        return;
     }
 
     method void transform(char dir){
@@ -279,6 +291,10 @@ class Board {
             do Output.printString("|");
             let i = i + 1;
         }
+
+        do Output.moveCursor(r + 6, c - 2);
+        do Output.printString("Turn: ");
+        do Output.printInt(nTurn);
         return;
     }
 
