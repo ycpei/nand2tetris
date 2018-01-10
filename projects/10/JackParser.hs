@@ -57,10 +57,7 @@ alphaNumUnderscore = alphaUnderscore ++ ['0'..'9']
 
 parse' parser = parse parser ""
 
-jack = jClass
-
-jClass :: JackParser JClass
-jClass = undefined
+jack = parse' jClass
 
 jBOp :: JackParser JBOp
 jBOp = oneOf binaryOpChars
@@ -86,13 +83,17 @@ jIdentifier = do
   xs <- many $ oneOf alphaNumUnderscore
   return $ x:xs
 
-jClassVarDec :: JackParser JClassVarDec
-jClassVarDec = do
+jClassVarDecs :: JackParser [JClassVarDec]
+jClassVarDecs = do
   scope <- jClassVarScope
   many1 space
-  typeAndId <- jVarDec
+  typeAndIds <- jTypeAndIds
   many space >> char ';'
-  return $ JClassVarDec scope typeAndId
+  return $ JClassVarDec scope <$> typeAndIds
+
+jVarDecs :: JackParser [JTypeAndId]
+jVarDecs = 
+  (string "var" >> many1 space) >> jTypeAndIds <* (many space >> char ';')
 
 jTypeAndId :: JackParser JTypeAndId
 jTypeAndId = do
@@ -101,21 +102,30 @@ jTypeAndId = do
   id <- jIdentifier
   return (type_, id)
 
-jParameter :: JackParser JParameter
-jParameter = many space >> jTypeAndId <* many space
+jTypeAndIds :: JackParser [JTypeAndId]
+jTypeAndIds = do
+  type_ <- jType'
+  many1 space
+  ids <- sepBy jIdentifier (many space >> char ',' >> many space)
+  return $ (\x -> (type_, x)) <$> ids
+
+jParameters :: JackParser [JTypeAndId]
+jParameters = do 
+  char '(' >> many space
+  params <- sepBy jTypeAndId (many space >> char ',' >> many space)
+  many space >> char ')'
+  return params
 
 jSubroutineHeader :: JackParser JSubroutineHeader
 jSubroutineHeader = do
   subtype <- jSubroutineType
   many1 space
   typeAndId <- jTypeAndId
-  char '('
-  params <- sepBy jParameter (char ',')
-  char ')'
+  params <- jParameters
   return $ JSubroutineHeader subtype typeAndId params
 
 jTerm :: JackParser JTerm
-jTerm = choice [jIntConst, jStrConst, jKeywordConst, jLeftVarId, jTermCall, jTermExp, jUnaryOpTerm, jTermInBraces]
+jTerm = choice [jIntConst, jStrConst, jKeywordConst, jTermVarId, jTermCall, jTermExp, jUnaryOpTerm, jTermInBraces]
 
 jIntConst :: JackParser JTerm
 jIntConst = JIntConst <$> (read <$> many1 digit)
@@ -126,11 +136,14 @@ jStrConst = JStrConst <$> between (char '"') (char '"') (many $ noneOf "\"")
 jKeywordConst :: JackParser JTerm
 jKeywordConst = JKeywordConst <$> (choice $ string <$> keywordConstStrs)
 
-jLeftVarId :: JackParser JTerm
+jTermVarId :: JackParser JTerm
+jTermVarId = JTermVarId <$> jLeftVarId
+
+jLeftVarId :: JackParser JLeftVarId
 jLeftVarId = do
   id <- jIdentifier
-  maybeArray <- option Nothing $ try (char '[' >> jExpression <* char ']')
-  return JLeftVarId id maybeArray
+  maybeArray <- optionMaybe $ try (char '[' >> jExpression <* char ']')
+  return $ JLeftVarId id maybeArray
 
 jTermCall :: JackParser JTerm
 jTermCall = JTermCall <$> jSubroutineCall
@@ -142,7 +155,7 @@ jUnaryOpTerm :: JackParser JTerm
 jUnaryOpTerm = do 
   op <- oneOf unaryOpChars
   many space
-  term <- JTerm
+  term <- jTerm
   return $ JUnaryOpTerm op term
 
 jTermInBraces :: JackParser JTerm
@@ -154,7 +167,7 @@ jExpression = do
   xs <- many jOpAndTerm
   return $ JExpression x xs
 
-jOpAndTerm :: JackParser (jBOp, jTerm)
+jOpAndTerm :: JackParser (JBOp, JTerm)
 jOpAndTerm = do
   op <- many space >> jBOp
   term <- many space >> jTerm
@@ -165,22 +178,80 @@ jClass = do
   string "class" >> many space >> char '{' >> many space
   id <- jIdentifier
   many space
-  classVarDecs <- sepBy jClassVarDec (many space)
+  classVarDecs <- sepBy jClassVarDecs (many space)
   subroutineDecs <- sepBy jSubroutineDec (many space)
   many space >> char '}'
-  return $ JClass id classVarDecs subroutineDecs
+  return $ JClass id (mconcat classVarDecs) subroutineDecs
 
 jSubroutineDec :: JackParser JSubroutineDec
 jSubroutineDec = do
   header <- jSubroutineHeader
   many space
   body <- jSubroutineBody
-  return JSubroutineDec header body
+  return $ JSubroutineDec header body
 
 jSubroutineBody :: JackParser JSubroutineBody
 jSubroutineBody = do
   char '{' >> many space
-  varDecs <- sepBy jVarDec (many space)
+  varDecs <- sepBy jVarDecs (many space)
   stmts <- sepBy jStatement (many space)
   many space >> char '}'
-  return JSubroutineBody varDecs stmts
+  return $ JSubroutineBody (mconcat varDecs) stmts
+
+jStatement :: JackParser JStatement
+jStatement = choice [jLetStatement, jIfStatement, jWhileStatement, jDoStatement, jReturnStatement]
+
+jLetStatement :: JackParser JStatement
+jLetStatement = do
+  string "let" >> many1 space
+  leftVarId <- jLeftVarId
+  many space >> char '=' >> many space
+  exp <- jExpression
+  many space >> char ';'
+  return $ JLetStatment leftVarId exp
+
+jIfStatement = do
+  string "if" >> many space >> char '(' >> many space
+  exp <- jExpression
+  many space >> char ')' >> many space >> char '{' >> many space
+  stmts <- many jStatement
+  many space >> char '}'
+  stmts' <- optionMaybe $ try jElseBlock 
+  return $ JIfStatement exp stmts stmts'
+
+jElseBlock :: JackParser [JStatement]
+jElseBlock = do
+  many space >> string "else" >> many space >> char '{' >> many space
+  stmts <- many jStatement
+  many space >> char '}'
+  return stmts
+
+jWhileStatement :: JackParser JStatement
+jWhileStatement = do
+  string "while" >> many space >> char '(' >> many space
+  exp <- jExpression
+  many space >> char ')' >> many space >> char '{' >> many space
+  stmts <- many jStatement
+  return $ JWhileStatment exp stmts
+
+jDoStatement :: JackParser JStatement
+jDoStatement = do
+  jCall <- string "do" >> many space >> jSubroutineCall 
+  many space >> char ';'
+  return $ JDoStatement jCall
+
+jReturnStatement :: JackParser JStatement
+jReturnStatement = do
+  string "return" >> many space
+  res <- optionMaybe $ try jExpression
+  many space >> char ';'
+  return $ JReturnStatement res
+
+jSubroutineCall :: JackParser JSubroutineCall
+jSubroutineCall = do
+  callee <- jIdentifier
+  method <- optionMaybe $ try (char '.' >> jIdentifier)
+  char '(' >> many space
+  exps <- sepBy jExpression (many space >> char ',' >> many space)
+  many space >> char ')'
+  return $ JSubroutineCall callee method exps
