@@ -59,6 +59,16 @@ parse' parser = parse parser ""
 
 jack = parse' jClass
 
+jClass :: JackParser JClass
+jClass = do
+  string "class" >> many1 space
+  id <- jIdentifier
+  many space >> char '{'
+  classVarDecs <- sepBy jClassVarDecs (many space)
+  subroutineDecs <- sepBy jSubroutineDec (many space)
+  many space >> char '}'
+  return $ JClass id (mconcat classVarDecs) subroutineDecs
+
 jBOp :: JackParser JBOp
 jBOp = oneOf binaryOpChars
 
@@ -84,7 +94,7 @@ jIdentifier = do
   return $ x:xs
 
 jClassVarDecs :: JackParser [JClassVarDec]
-jClassVarDecs = do
+jClassVarDecs = try $ do
   scope <- jClassVarScope
   many1 space
   typeAndIds <- jTypeAndIds
@@ -95,9 +105,9 @@ jVarDecs :: JackParser [JTypeAndId]
 jVarDecs = 
   (string "var" >> many1 space) >> jTypeAndIds <* (many space >> char ';')
 
-jTypeAndId :: JackParser JTypeAndId
-jTypeAndId = do
-  type_ <- jType'
+jTypeAndId :: JackParser JType -> JackParser JTypeAndId
+jTypeAndId p = do
+  type_ <- p
   many1 space
   id <- jIdentifier
   return (type_, id)
@@ -112,7 +122,7 @@ jTypeAndIds = do
 jParameters :: JackParser [JTypeAndId]
 jParameters = do 
   char '(' >> many space
-  params <- sepBy jTypeAndId (many space >> char ',' >> many space)
+  params <- sepBy (jTypeAndId jType') (many space >> char ',' >> many space)
   many space >> char ')'
   return params
 
@@ -120,7 +130,7 @@ jSubroutineHeader :: JackParser JSubroutineHeader
 jSubroutineHeader = do
   subtype <- jSubroutineType
   many1 space
-  typeAndId <- jTypeAndId
+  typeAndId <- jTypeAndId jType
   params <- jParameters
   return $ JSubroutineHeader subtype typeAndId params
 
@@ -172,16 +182,6 @@ jOpAndTerm = do
   op <- many space >> jBOp
   term <- many space >> jTerm
   return (op, term)
-
-jClass :: JackParser JClass
-jClass = do
-  string "class" >> many space >> char '{' >> many space
-  id <- jIdentifier
-  many space
-  classVarDecs <- sepBy jClassVarDecs (many space)
-  subroutineDecs <- sepBy jSubroutineDec (many space)
-  many space >> char '}'
-  return $ JClass id (mconcat classVarDecs) subroutineDecs
 
 jSubroutineDec :: JackParser JSubroutineDec
 jSubroutineDec = do
