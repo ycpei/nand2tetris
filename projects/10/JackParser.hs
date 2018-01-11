@@ -12,22 +12,25 @@ data JClassVarDec = JClassVarDec JClassVarScope JTypeAndId deriving (Show, Eq)
 data JSubroutineDec = JSubroutineDec JSubroutineHeader JSubroutineBody deriving (Show, Eq)
 data JSubroutineHeader = JSubroutineHeader JSubroutineType JTypeAndId [JTypeAndId] deriving (Show, Eq)
 data JSubroutineBody = JSubroutineBody [JTypeAndId] [JStatement] deriving (Show, Eq)
-data JStatement = JLetStatment JLeftVarId JExpression 
+data JStatement = JLetStatment JVarId JExpression 
                 | JIfStatement JExpression [JStatement] (Maybe [JStatement])
                 | JWhileStatment JExpression [JStatement]
                 | JDoStatement JSubroutineCall
                 | JReturnStatement (Maybe JExpression) 
                     deriving (Show, Eq)
-data JExpression = JExpression JTerm [(JBOp, JTerm)] deriving (Show, Eq)     -- JBOp can only be one of +-*/&|<>=
-data JTerm = JIntConst Int 
+--data JExpression = JExpression JTerm [(JBOp, JTerm)] deriving (Show, Eq)     -- JBOp can only be one of +-*/&|<>=
+data JExpression = JIntConst Int 
            | JStrConst [Char]
            | JKeywordConst [Char]       -- can only be true, false, null or this
-           | JTermVarId JLeftVarId
-           | JTermCall JSubroutineCall 
-           | JTermExp JExpression 
-           | JUnaryOpTerm JUOp JTerm     -- JOp can only be - or ~ here
+           | JExpVar JVarId
+           | JExpCall JSubroutineCall 
+           | JExpUna JUOp JExpression     -- JOp can only be - or ~ here
+           | JExpBin JExpression [(JBOp, JExpression)]
+           -- | JTermVarId JLeftVarId
+           -- | JTermCall JSubroutineCall 
+           -- | JTermExp JExpression 
                deriving (Show, Eq)
-data JLeftVarId = JLeftVarId JIdentifier (Maybe JExpression) deriving (Show, Eq)
+data JVarId = JVarId JIdentifier (Maybe JExpression) deriving (Show, Eq)
 data JSubroutineCall = JSubroutineCall JIdentifier (Maybe JIdentifier) [JExpression] deriving (Show, Eq)
 type JBOp = Char
 type JUOp = Char
@@ -44,8 +47,8 @@ type JackParser = Parsec [Char] ()
 binaryOpChars = "+-*/&|<>="
 unaryOpChars = "-~"
 keywordConstStrs = ["true", "false", "null", "this"]
-typeStrs' = ["int", "char", "boolean"]
-typeStrs = typeStrs' ++ ["void"]
+primTypeStrs = ["int", "char", "boolean"]
+primTypeStrs' = primTypeStrs ++ ["void"]
 classVarScopeStrs = ["static", "field"]
 subroutineTypeStrs = ["constructor", "function", "method"]
 alphaUnderscore = ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['_']
@@ -64,10 +67,18 @@ jClass = do
   string "class" >> many1 space
   id <- jIdentifier
   many space >> char '{'
-  classVarDecs <- sepBy jClassVarDecs (many space)
-  subroutineDecs <- sepBy jSubroutineDec (many space)
+  --classVarDecs <- sepBy jClassVarDecs (many space)
+  classVarDecs <- many $ try (many space >> jClassVarDecs)
+  --subroutineDecs <- sepBy jSubroutineDec (many space)
+  subroutineDecs <- many $ try (many space >> jSubroutineDec)
   many space >> char '}'
   return $ JClass id (mconcat classVarDecs) subroutineDecs
+
+jClassType :: JackParser [Char]
+jClassType = do 
+  x <- oneOf ['A' .. 'Z']
+  xs <- many $ oneOf alphaNumUnderscore
+  return $ x:xs
 
 jBOp :: JackParser JBOp
 jBOp = oneOf binaryOpChars
@@ -75,11 +86,17 @@ jBOp = oneOf binaryOpChars
 jUOp :: JackParser JUOp
 jUOp = oneOf unaryOpChars
 
+jPrimType :: JackParser JType
+jPrimType = choice $ string <$> primTypeStrs
+
 jType :: JackParser JType
-jType = choice $ string <$> typeStrs
+jType = choice [jPrimType, jClassType]
+
+jPrimType' :: JackParser JType
+jPrimType' = choice $ string <$> primTypeStrs'
 
 jType' :: JackParser JType
-jType' = choice $ string <$> typeStrs'
+jType' = choice [jPrimType', jClassType]
 
 jClassVarScope :: JackParser JClassVarScope
 jClassVarScope = choice $ string <$> classVarScopeStrs
@@ -94,7 +111,7 @@ jIdentifier = do
   return $ x:xs
 
 jClassVarDecs :: JackParser [JClassVarDec]
-jClassVarDecs = try $ do
+jClassVarDecs = do
   scope <- jClassVarScope
   many1 space
   typeAndIds <- jTypeAndIds
@@ -114,7 +131,7 @@ jTypeAndId p = do
 
 jTypeAndIds :: JackParser [JTypeAndId]
 jTypeAndIds = do
-  type_ <- jType'
+  type_ <- jType
   many1 space
   ids <- sepBy jIdentifier (many space >> char ',' >> many space)
   return $ (\x -> (type_, x)) <$> ids
@@ -122,7 +139,7 @@ jTypeAndIds = do
 jParameters :: JackParser [JTypeAndId]
 jParameters = do 
   char '(' >> many space
-  params <- sepBy (jTypeAndId jType') (many space >> char ',' >> many space)
+  params <- sepBy (jTypeAndId jType) (try $ many space >> char ',' >> many space)
   many space >> char ')'
   return params
 
@@ -130,58 +147,58 @@ jSubroutineHeader :: JackParser JSubroutineHeader
 jSubroutineHeader = do
   subtype <- jSubroutineType
   many1 space
-  typeAndId <- jTypeAndId jType
+  typeAndId <- jTypeAndId jType'
   params <- jParameters
   return $ JSubroutineHeader subtype typeAndId params
 
-jTerm :: JackParser JTerm
-jTerm = choice [jIntConst, jStrConst, jKeywordConst, jTermVarId, jTermCall, jTermExp, jUnaryOpTerm, jTermInBraces]
+jExpression :: JackParser JExpression
+jExpression = jExpBin <|> jTerm
 
-jIntConst :: JackParser JTerm
+jTerm :: JackParser JExpression
+jTerm = choice [jIntConst, jStrConst, jKeywordConst, jExpCall, jExpVar, jExpUna, jExpInBraces]
+
+jIntConst :: JackParser JExpression
 jIntConst = JIntConst <$> (read <$> many1 digit)
 
-jStrConst :: JackParser JTerm
+jStrConst :: JackParser JExpression
 jStrConst = JStrConst <$> between (char '"') (char '"') (many $ noneOf "\"")
 
-jKeywordConst :: JackParser JTerm
+jKeywordConst :: JackParser JExpression
 jKeywordConst = JKeywordConst <$> (choice $ string <$> keywordConstStrs)
 
-jTermVarId :: JackParser JTerm
-jTermVarId = JTermVarId <$> jLeftVarId
+jExpVar :: JackParser JExpression
+jExpVar = JExpVar <$> jVarId
 
-jLeftVarId :: JackParser JLeftVarId
-jLeftVarId = do
+jVarId :: JackParser JVarId
+jVarId = do
   id <- jIdentifier
   maybeArray <- optionMaybe $ try (char '[' >> jExpression <* char ']')
-  return $ JLeftVarId id maybeArray
+  return $ JVarId id maybeArray
 
-jTermCall :: JackParser JTerm
-jTermCall = JTermCall <$> jSubroutineCall
+jExpCall :: JackParser JExpression
+jExpCall = JExpCall <$> jSubroutineCall
 
-jTermExp :: JackParser JTerm
-jTermExp = JTermExp <$> jExpression
-
-jUnaryOpTerm :: JackParser JTerm
-jUnaryOpTerm = do 
+jExpUna :: JackParser JExpression
+jExpUna = do 
   op <- oneOf unaryOpChars
   many space
-  term <- jTerm
-  return $ JUnaryOpTerm op term
-
-jTermInBraces :: JackParser JTerm
-jTermInBraces = between (char '(') (char ')') jTerm
-
-jExpression :: JackParser JExpression
-jExpression = do
   x <- jTerm
-  xs <- many jOpAndTerm
-  return $ JExpression x xs
+  return $ JExpUna op x
 
-jOpAndTerm :: JackParser (JBOp, JTerm)
+jExpInBraces :: JackParser JExpression
+jExpInBraces = between (char '(') (char ')') jExpression  -- expressions like a + () is not allowed
+
+jExpBin :: JackParser JExpression
+jExpBin = try $ do
+  x <- jTerm
+  xs <- many1 jOpAndTerm
+  return $ JExpBin x xs
+
+jOpAndTerm :: JackParser (JBOp, JExpression)
 jOpAndTerm = do
   op <- many space >> jBOp
-  term <- many space >> jTerm
-  return (op, term)
+  x <- many space >> jTerm
+  return (op, x)
 
 jSubroutineDec :: JackParser JSubroutineDec
 jSubroutineDec = do
@@ -192,9 +209,9 @@ jSubroutineDec = do
 
 jSubroutineBody :: JackParser JSubroutineBody
 jSubroutineBody = do
-  char '{' >> many space
-  varDecs <- sepBy jVarDecs (many space)
-  stmts <- sepBy jStatement (many space)
+  char '{'
+  varDecs <- many $ try (many space >> jVarDecs)
+  stmts <- many $ try (many space >> jStatement)
   many space >> char '}'
   return $ JSubroutineBody (mconcat varDecs) stmts
 
@@ -204,7 +221,7 @@ jStatement = choice [jLetStatement, jIfStatement, jWhileStatement, jDoStatement,
 jLetStatement :: JackParser JStatement
 jLetStatement = do
   string "let" >> many1 space
-  leftVarId <- jLeftVarId
+  leftVarId <- jVarId
   many space >> char '=' >> many space
   exp <- jExpression
   many space >> char ';'
@@ -248,10 +265,18 @@ jReturnStatement = do
   return $ JReturnStatement res
 
 jSubroutineCall :: JackParser JSubroutineCall
-jSubroutineCall = do
+jSubroutineCall = try $ do
   callee <- jIdentifier
   method <- optionMaybe $ try (char '.' >> jIdentifier)
+  args <- emptyArgs <|> someArgs
+  return $ JSubroutineCall callee method args
+
+emptyArgs :: JackParser [JExpression]
+emptyArgs = return [] <* (try $ char '(' >> many space >> char ')')
+
+someArgs :: JackParser [JExpression]
+someArgs = do
   char '(' >> many space
   exps <- sepBy jExpression (many space >> char ',' >> many space)
   many space >> char ')'
-  return $ JSubroutineCall callee method exps
+  return exps
