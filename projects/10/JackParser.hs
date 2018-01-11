@@ -11,6 +11,7 @@ import Data.Maybe
 import Data.List
 import System.Environment
 import System.Directory
+import Control.Monad
 
 data JClass = JClass JIdentifier [JClassVarDec] [JSubroutineDec] deriving (Show, Eq)
 data JClassVarDec = JClassVarDec JClassVarScope JTypeAndId deriving (Show, Eq)
@@ -55,7 +56,8 @@ alphaNumUnderscore = alphaUnderscore ++ ['0'..'9']
 
 parse' parser = parse parser ""
 
-jack = parse' jClass
+--jack xs = parse' (many jSpace >> jClass) (replCrWithNl xs)
+jack = parse' (many jSpace >> jClass)
 
 jClass :: JackParser JClass
 jClass = do
@@ -84,10 +86,11 @@ jComment = jInlineComment <|> jBlockComment
 
 jInlineComment :: JackParser ()
 jInlineComment = return () <*
-  try (string "//" >> manyTill (noneOf "\n") newline)
+  try (string "//" >> manyTill (noneOf "\n\r") endOfLine)
+  --try (string "//" >> manyTill (noneOf "\n") newline)
 
 jSpace :: JackParser ()
-jSpace = (return () <* jSpace) <|> jComment
+jSpace = (return () <* space) <|> jComment
 
 jBlockComment :: JackParser ()
 jBlockComment = return () <*
@@ -140,7 +143,7 @@ jTypeAndIds :: JackParser [JTypeAndId]
 jTypeAndIds = do
   type_ <- jType
   many1 jSpace
-  ids <- sepBy jIdentifier (many jSpace >> char ',' >> many jSpace)
+  ids <- sepBy jIdentifier (try $ many jSpace >> char ',' >> many jSpace)
   return $ (\x -> (type_, x)) <$> ids
 
 jParameters :: JackParser [JTypeAndId]
@@ -171,7 +174,7 @@ jStrConst :: JackParser JExpression
 jStrConst = JStrConst <$> between (char '"') (char '"') (many $ noneOf "\"")
 
 jKeywordConst :: JackParser JExpression
-jKeywordConst = JKeywordConst <$> (choice $ string <$> keywordConstStrs)
+jKeywordConst = JKeywordConst <$> (choice $ try <$> string <$> keywordConstStrs)
 
 jExpVar :: JackParser JExpression
 jExpVar = JExpVar <$> jVarId
@@ -238,7 +241,7 @@ jIfStatement = do
   string "if" >> many jSpace >> char '(' >> many jSpace
   exp <- jExpression
   many jSpace >> char ')' >> many jSpace >> char '{' >> many jSpace
-  stmts <- many jStatement
+  stmts <- many (try $ many jSpace >> jStatement)
   many jSpace >> char '}'
   stmts' <- optionMaybe $ try jElseBlock 
   return $ JIfStatement exp stmts stmts'
@@ -246,7 +249,7 @@ jIfStatement = do
 jElseBlock :: JackParser [JStatement]
 jElseBlock = do
   many jSpace >> string "else" >> many jSpace >> char '{' >> many jSpace
-  stmts <- many jStatement
+  stmts <- many (try $ many jSpace >> jStatement)
   many jSpace >> char '}'
   return stmts
 
@@ -254,8 +257,9 @@ jWhileStatement :: JackParser JStatement
 jWhileStatement = do
   string "while" >> many jSpace >> char '(' >> many jSpace
   exp <- jExpression
-  many jSpace >> char ')' >> many jSpace >> char '{' >> many jSpace
-  stmts <- many jStatement
+  many jSpace >> char ')' >> many jSpace >> char '{'
+  stmts <- many (try $ many jSpace >> jStatement)
+  many jSpace >> char '}'
   return $ JWhileStatment exp stmts
 
 jDoStatement :: JackParser JStatement
@@ -288,20 +292,19 @@ someArgs = do
   many jSpace >> char ')'
   return exps
 
--- IO
-parseCodes :: [[Char]] -> [[Char]] -> [Char]
-parseCodes codes = jack <$> codes
+replCrWithNl :: [Char] -> [Char]
+replCrWithNl = fmap cr2nl 
+  where cr2nl '\r' = '\n'
+        cr2nl c = c
 
-lastSplit c xs = (take (prefix - 1) xs, drop prefix xs)
-  where prefix = length xs - (fromJust . elemIndex c . reverse) xs
+-- IO
 
 main = do
   dir <- head <$> getArgs
   filesWODir <- filter isJackFile <$> listDirectory dir 
   let jackFiles = (dir++) <$> filesWODir
-  let ofPath = dir ++ (snd $ lastSplit '/' $ init dir) ++ ".ast"
-  let filenames = removeExt <$> filesWODir
   codes <- sequence $ readFile <$> jackFiles
-  writeFile ofPath $ parseCodes codes filenames
-    where isJackFile xs = drop (length xs - 4) xs == ".jack"
-          removeExt xs = take (length xs - 4) xs
+  zipWithM writeFile (chExt <$> jackFiles) (show . jack <$> codes)
+    where isJackFile xs = drop (length xs - 5) xs == ".jack"
+          chExt xs = take (length xs - 4) xs ++ "ast"
+          --}
