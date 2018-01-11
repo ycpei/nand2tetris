@@ -12,6 +12,8 @@ import Data.List
 import System.Environment
 import System.Directory
 import Control.Monad
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 data JClass = JClass JIdentifier [JClassVarDec] [JSubroutineDec] deriving (Show, Eq)
 data JClassVarDec = JClassVarDec JClassVarScope JTypeAndId deriving (Show, Eq)
@@ -34,6 +36,9 @@ data JExpression = JIntConst Int
                deriving (Show, Eq)
 data JVarId = JVarId JIdentifier (Maybe JExpression) deriving (Show, Eq)
 data JSubroutineCall = JSubroutineCall JIdentifier (Maybe JIdentifier) [JExpression] deriving (Show, Eq)
+
+data ClassTable = C [Char] Table Int deriving (Show, Eq)
+
 type JBOp = Char
 type JUOp = Char
 type JIdentifier = [Char]
@@ -42,6 +47,7 @@ type JClassVarScope = [Char]
 type JType = [Char]
 type JSubroutineType = [Char]
 type JackParser = Parsec [Char] ()
+type Table = Map [Char] ([Char], [Char], Int)
 
 
 binaryOpChars = "+-*/&|<>="
@@ -292,6 +298,45 @@ someArgs = do
   many jSpace >> char ')'
   return exps
 
+
+buildCTable :: [Char] -> [JClassVarDec] -> ClassTable
+buildCTable name xs = go 0 0 Map.empty xs
+  where go n _ t [] = C name t n
+        go nField nStatic t ((JClassVarDec "field" (ty, jId)):ys) =
+          go (nField + 1) nStatic (Map.insert jId (ty, "field", nField) t) ys
+        go nField nStatic t ((JClassVarDec "static" (ty, jId)):ys) =
+          go nField (nStatic + 1) (Map.insert jId (ty, "static", nStatic) t) ys
+          
+
+--data JClass = JClass JIdentifier [JClassVarDec] [JSubroutineDec] deriving (Show, Eq)
+buildSRTable :: [JClass] -> Table
+buildSRTable xs = Map.fromList $ mconcat $ go <$> xs where 
+  go (JClass cName _ subs) = go' <$> subs where
+    go' (JSubroutineDec (JSubroutineHeader kind (ty, sName) args) _) = 
+      (cName ++ "." ++ sName, (ty, kind, length args))
+       
+--data JSubroutineDec = JSubroutineDec JSubroutineHeader JSubroutineBody deriving (Show, Eq)
+--data JSubroutineHeader = JSubroutineHeader JSubroutineType JTypeAndId [JTypeAndId] deriving (Show, Eq)
+--data JSubroutineBody = JSubroutineBody [JTypeAndId] [JStatement] deriving (Show, Eq)
+
+vSubroutine :: ClassTable -> JSubroutineDec -> [Char]
+vSubroutine cTable sub = 
+  "function " ++ name ++ "." ++ sName ++ " " ++ show (nLcls - 1) ++ "\n" ++ 
+  (if sType == "constructor" vNew cTable else "")
+  mconcat $ vStatement <$> stmts where 
+    JSubroutineDec (JSubroutineHeader kind)
+    vNew (C _ _ n) = "push constant " ++ show n ++ "\ncall Memory.alloc 1\n" ++
+                     "pop pointer 0\n"
+
+--vClass :: JClass -> [Char]
+--vClass (JClass cName cVars subs) =
+  --vSubroutine (table cName cVars) <$> subs
+
+
+fst3 (x, y, z) = x
+snd3 (x, y, z) = y
+trd3 (x, y, z) = z
+
 {--
 replCrWithNl :: [Char] -> [Char]
 replCrWithNl = fmap cr2nl 
@@ -301,6 +346,7 @@ replCrWithNl = fmap cr2nl
 
 -- IO
 
+{--
 main = do
   dir <- head <$> getArgs
   filesWODir <- filter isJackFile <$> listDirectory dir 
