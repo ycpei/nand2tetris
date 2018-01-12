@@ -304,7 +304,7 @@ buildCTable :: [Char] -> [JClassVarDec] -> ClassTable
 buildCTable name xs = go 0 0 Map.empty xs
   where go n _ t [] = C name t n
         go nField nStatic t ((JClassVarDec "field" (ty, jId)):ys) =
-          go (nField + 1) nStatic (Map.insert jId (ty, "field", nField) t) ys
+          go (nField + 1) nStatic (Map.insert jId (ty, "this", nField) t) ys
         go nField nStatic t ((JClassVarDec "static" (ty, jId)):ys) =
           go nField (nStatic + 1) (Map.insert jId (ty, "static", nStatic) t) ys
           
@@ -347,10 +347,10 @@ vStatement _ _ _ _ [] = ""
 
 vStatement t s name n ((JLetStatment var exp):stmts) =
 -- vExpression: push the result of exp; vPopToVar: pop to the var addr
-  vExpression t s exp ++ vPopToVar t s var ++ vStatement t s name n stmts 
+  vExpression t s name exp ++ vPopToVar t s var ++ vStatement t s name n stmts 
 
 vStatement t s name n ((JIfStatement cond thenStmts elseStmts):stmts) =
-  vExpression t s cond ++ vNot ++ vThen thenStmts ++ 
+  vExpression t s name cond ++ vNot ++ vThen thenStmts ++ 
   maybe (vLabel labelElse) vElse elseStmts ++ vStatement t s name (n + 1) stmts where 
     labelElse = name ++ ".Else" ++ show n
     labelEndIf = name ++ ".Endif" ++ show n
@@ -359,17 +359,17 @@ vStatement t s name n ((JIfStatement cond thenStmts elseStmts):stmts) =
                vStatement t s labelIf 0 xs ++ vLabel labelEndIf
 
 vStatement t s name n ((JWhileStatment cond loopStmts):stmts) = 
-  vLabel labelWhile ++ vExpression t s cond ++ vNot ++ vIfGoto labelEndWhile ++ 
+  vLabel labelWhile ++ vExpression t s name cond ++ vNot ++ vIfGoto labelEndWhile ++ 
   vStatement t s labelWhile 0 loopStmts ++ vGoto labelWhile ++ 
   vLabel labelEndWhile ++ vStatement t s name (n + 1) stmts where
     labelWhile = name ++ ".While" ++ show n
     labelEndWhile = name ++ ".EndWhile" ++ show n
 
 vStatement t s name n ((JDoStatement subCall):stmts) =
-  vSubroutineCall subCall ++ vPop "temp" 0 ++ vStatement t s name n stmts
+  vSubroutineCall t s name subCall ++ vPop "temp" 0 ++ vStatement t s name n stmts
 
 vStatement t s name n ((JReturnStatement ret):stmts) =
-  maybe (vPush "constant" 0) (vExpression t s) ret ++ vReturn ++
+  maybe (vPush "constant" 0) (vExpression t s name) ret ++ vReturn ++
   vStatement t s name n stmts
 
 -- data JExpression = JIntConst Int 
@@ -380,13 +380,57 @@ vStatement t s name n ((JReturnStatement ret):stmts) =
            -- | JExpUna JUOp JExpression     -- JOp can only be - or ~ here
            -- | JExpBin JExpression [(JBOp, JExpression)]
 
-vExpression t s (JIntConst n) = push "constant" n
-vExpression t s (JStrConst xs) = 
+vExpression t s _ (JIntConst n) = push "constant" n
 
+vExpression t s _ (JStrConst xs) = 
+  vPush "constant" (length xs) ++ vCall "String.new" 1 ++ mconcat (go <$> xs) where
+    go x = vPush "constant" (ord x) ++ vCall "String.appendChar" 2
 
+vExpression t s cName (JExpVar (JVarId name idx))
+  | idx == Nothing = vPush seg n
+  | idx == Maybe exp = vPush seg n ++ vExpression t s cName exp ++ vAdd 
+                       ++ vPop "pointer" 1 ++ vPush "that" 0
+      where (seg, n) = getSegN t s name
+
+vPopToVar t s cName (JVarId name idx))
+  | idx == Nothing = vPop seg n
+  | idx == Maybe Exp = vPush seg n ++ vExpression t s cName exp ++ vAdd ++ 
+                       vPop "pointer" 1 ++ vPop "that" 0
+      where (seg, n) = getSegN t s name
+
+vExpression t s cName (JExpCall subCall) = vSubroutineCall t s cName subCall
+
+vExpression t s cName (JExpUna op exp) = vExpression t s cName exp ++ vOp op
+  where vOp '~' = vNot; vOp '-' = vNeg;
+
+vExpression t s cName (JExpBin exp xs) = 
+  vExpression t s cName exp ++ mconcat (go <$> xs) 
+    where go (op, exp) = vExpression t s cName exp ++ vOp op
+          vOp '+' = vAdd; vOp '-' = vSub; vOp '*' = vMul; vOp '/' = vDiv;
+          vOp '&' = vAnd; vOp '|' = vOr;  vOp '<' = vLt;  vOp '>' = vGt;
+          vOp '=' = vEq;
+
+getSegN :: Table -> Table -> [Char] -> ([Char], Int)
+getSegN t s name = case Map.lookup name s of
+  Just (_, seg, n) -> (seg, n)
+  Nothing -> let (_, seg, n) = t Map.! name in (seg, n)
+
+-- data JSubroutineCall = JSubroutineCall JIdentifier (Maybe JIdentifier) [JExpression] deriving (Show, Eq)
+vSubroutineCall t s cName (JSubroutineCall name name' args) = 
+  mconcat (vExpression t s cName <$> args) ++ vCall name'' nArgs
 
 vNew n = vPush "constant" n ++ vCall "Memory.alloc" 1 ++ vPop "pointer" 0
+vAdd = "add\n"
 vNot = "not\n"
+vNeg = "neg\n"
+vSub = "sub\n"
+vMul = "call Math.multiply 2\n"
+vDiv = "call Math.division 2\n"
+vAnd = "and\n"
+vOr = "or\n"
+vLt = "lt\n"
+vGt = "gt\n"
+vEq = "eq\n"
 vReturn = "return\n"
 vLabel xs = "label " ++ xs ++ "\n"
 vGoto xs = "goto " ++ xs ++ "\n"
