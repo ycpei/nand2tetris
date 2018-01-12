@@ -12,6 +12,7 @@ import Data.List
 import System.Environment
 import System.Directory
 import Control.Monad
+import Data.Char
 import Data.Map (Map)
 import qualified Data.Map as Map
 
@@ -335,20 +336,20 @@ vmWriter :: [JClass] -> [[Char]]
 vmWriter xs = vClass (buildSRTable xs) <$> xs
 
 vClass :: Table -> JClass -> [Char]
-vClass u (JClass name vars subs) = mconcat $ vSubroutine name t u n <$> subs where
+vClass u (JClass name vars subs) = mconcat $ vSubroutineDec name t u n <$> subs where
   (t, n) = buildCTable vars
 
-vSubroutine :: ClassTable -> Table -> Table -> Int -> JSubroutineDec -> [Char]
-vSubroutine cName t u n sub = 
+vSubroutineDec :: [Char] -> Table -> Table -> Int -> JSubroutineDec -> [Char]
+vSubroutineDec cName t u n sub = 
   vFunction (cName ++ "." ++ sName) nLcls ++ kindSpec ++
-  mconcat (vStatement t s u sName 0 stmts) where 
+  vStatement t s u sName 0 stmts where 
     JSubroutineDec (JSubroutineHeader _ (_, sName) args) (JSubroutineBody lcls stmts) = sub
     nLcls = length lcls
     s = buildLTable args lcls
     kind = fst $ u Map.! (cName ++ "." ++ sName)
     kindSpec = if kind == "constructor" 
       then vNew n 
-      else if kind = "method"
+      else if kind == "method"
         then vPush "argument" 0 ++ vPop "pointer" 0
         else ""
 
@@ -362,13 +363,14 @@ vStatement _ _ _ _ _ [] = ""
 
 vStatement t s u name n ((JLetStatment var exp):stmts) =
 -- vExpression: push the result of exp; vPopToVar: pop to the var addr
-  vExpression t s u name exp ++ vPopToVar t s var ++ vStatement t s u name n stmts 
+  vExpression t s u name exp ++ vPopToVar t s u name var ++ vStatement t s u name n stmts 
 
 vStatement t s u name n ((JIfStatement cond thenStmts elseStmts):stmts) =
   vExpression t s u name cond ++ vNot ++ vThen thenStmts ++ 
   maybe (vLabel labelElse) vElse elseStmts ++ vStatement t s u name (n + 1) stmts where 
     labelElse = name ++ ".Else" ++ show n
     labelEndIf = name ++ ".Endif" ++ show n
+    labelIf = name ++ ".If" ++ show n
     vThen xs = vIfGoto labelElse ++ vStatement t s u labelElse 0 xs
     vElse xs = vGoto labelEndIf ++ vLabel labelElse ++ 
                vStatement t s u labelIf 0 xs ++ vLabel labelEndIf
@@ -395,23 +397,20 @@ vStatement t s u name n ((JReturnStatement ret):stmts) =
            -- | JExpUna JUOp JExpression     -- JOp can only be - or ~ here
            -- | JExpBin JExpression [(JBOp, JExpression)]
 
-vExpression t s _ _ (JIntConst n) = push "constant" n
+vExpression :: Table -> Table -> Table -> [Char] -> JExpression -> [Char]
+
+vExpression t s _ _ (JIntConst n) = vPush "constant" n
 
 vExpression t s _ _ (JStrConst xs) = 
   vPush "constant" (length xs) ++ vCall "String.new" 1 ++ mconcat (go <$> xs) where
     go x = vPush "constant" (ord x) ++ vCall "String.appendChar" 2
 
-vExpression t s u cName (JExpVar (JVarId name idx))
-  | idx == Nothing = vPush seg n
-  | idx == Maybe exp = vPush seg n ++ vExpression t s u cName exp ++ vAdd 
-                       ++ vPop "pointer" 1 ++ vPush "that" 0
-      where (seg, n) = getSegN t s name
+vExpression t s _ _ (JKeywordConst x) 
+  | x == "null" || x == "false" = vPush "constant" 0
+  | x == "true" = vPush "constant" 1 ++ vNeg
+  | x == "this" = vPush "pointer" 0
 
-vPopToVar t s cName (JVarId name idx))
-  | idx == Nothing = vPop seg n
-  | idx == Maybe Exp = vPush seg n ++ vExpression t s u cName exp ++ vAdd ++ 
-                       vPop "pointer" 1 ++ vPop "that" 0
-      where (seg, n) = getSegN t s name
+vExpression t s u cName (JExpVar (JVarId name idx)) = vVar t s u cName name idx vPush
 
 vExpression t s u cName (JExpCall subCall) = vSubroutineCall t s u cName subCall
 
@@ -420,11 +419,23 @@ vExpression t s u cName (JExpUna op exp) = vExpression t s u cName exp ++ vOp op
 
 vExpression t s u cName (JExpBin exp xs) = 
   vExpression t s u cName exp ++ mconcat (go <$> xs) 
-    where go (op, exp) = vExpression t s cName exp ++ vOp op
+    where go (op, exp) = vExpression t s u cName exp ++ vOp op
           vOp '+' = vAdd; vOp '-' = vSub; vOp '*' = vMul; vOp '/' = vDiv;
           vOp '&' = vAnd; vOp '|' = vOr;  vOp '<' = vLt;  vOp '>' = vGt;
           vOp '=' = vEq;
 
+vPopToVar t s u cName (JVarId name idx) = vVar t s u cName name idx vPop
+
+vVar :: Table -> Table -> Table -> [Char] -> [Char] -> Maybe JExpression -> ([Char] -> Int -> [Char]) -> [Char]
+vVar t s u cName name idx vPushOrPop = 
+  let (seg, n) = getSegN t s name in 
+    case idx of
+      Nothing -> vPushOrPop seg n
+      Just exp -> vPush seg n ++ vExpression t s u cName exp ++ vAdd 
+                       ++ vPop "pointer" 1 ++ vPushOrPop "that" 0
+      
+
+getRecord :: Table -> Table -> [Char] -> ([Char], ([Char], Int))
 getRecord t s name = case Map.lookup name s of
   Just x -> x
   Nothing -> t Map.! name
@@ -432,7 +443,7 @@ getRecord t s name = case Map.lookup name s of
 getSegN :: Table -> Table -> [Char] -> ([Char], Int)
 getSegN t s name = snd $ getRecord t s name
 
-getType :: Table -> Table -> [Char] -> ([Char], Int)
+getType :: Table -> Table -> [Char] -> [Char]
 getType t s name = fst $ getRecord t s name
 
 -- data JSubroutineCall = JSubroutineCall JIdentifier (Maybe JIdentifier) [JExpression] deriving (Show, Eq)
@@ -440,14 +451,14 @@ vSubroutineCall t s u cName (JSubroutineCall name name' args) =
   method ++ mconcat (vExpression t s u cName <$> args) ++ vCall name'' nArgs
     where 
       name'' = if name' == Nothing 
-                 then cName ++ '.' ++ name 
+                 then cName ++ "." ++ name 
                  else if head name `elem` ['A' .. 'Z'] 
-                        then name ++ '.' ++ fromJust name'
-                        else getType t s name ++ '.' ++ fromJust name'
+                        then name ++ "." ++ fromJust name'
+                        else getType t s name ++ "." ++ fromJust name'
       -- u is the SRTable
       (method, nArgs) = 
-         if fst $ u Map.! name'' == "method"
-           then let (seg, n) = getSegN name in (vPush seg n, length args + 1)
+         if fst (u Map.! name'') == "method"
+           then let (seg, n) = getSegN t s name in (vPush seg n, length args + 1)
            else ("", length args)
 
 vNew n = vPush "constant" n ++ vCall "Memory.alloc" 1 ++ vPop "pointer" 0
@@ -471,7 +482,12 @@ vCall xs n = "call " ++ xs ++ " " ++ show n ++ "\n"
 vPush xs n = "push " ++ xs ++ " " ++ show n ++ "\n"
 vPop xs n = "pop " ++ xs ++ " " ++ show n ++ "\n"
 
-vmWriter 
+inputSeven = ["// This file is part of www.nand2tetris.org\n// and the book \"The Elements of Computing Systems\"\n// by Nisan and Schocken, MIT Press.\n// File name: projects/11/Seven/Main.jack\n\n/**\n * Computes the value of 1 + (2 * 3) and prints the result\n * at the top-left of the screen.  \n */\nclass Main {\n\n   function void main() {\n      do Output.printInt(1 + (2 * 3));\n      return;\n   }\n}\n"]
+
+inputSeven1 = "do Output.printInt(1 + (2 * 3));"
+
+test reader writer x = let Right y = parse' reader x in writer y
+test' x = let Right y = parse' jStatement x in vStatement Map.empty Map.empty Map.empty "" 0 [y]
 
 {--
 fst3 (x, y, z) = x
