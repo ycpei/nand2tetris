@@ -1,6 +1,6 @@
--- Jack Parser, as the coursework of Project 10 of Nand2Tetris course.
+-- Jack Compiler, as the coursework of Project 11 of Nand2Tetris course.
 -- Author: Yuchen Pei (me@ypei.me)
--- Date: 2018-01-11
+-- Date: 2018-01-12
 {-# LANGUAGE FlexibleContexts #-}
 import Text.Parsec.Prim
 import Text.Parsec.Char
@@ -298,6 +298,7 @@ someArgs = do
   many jSpace >> char ')'
   return exps
 
+-- vm writer starts from here
 
 buildCTable :: [Char] -> [JClassVarDec] -> ClassTable
 buildCTable name xs = go 0 0 Map.empty xs
@@ -314,6 +315,12 @@ buildSRTable xs = Map.fromList $ mconcat $ go <$> xs where
   go (JClass cName _ subs) = go' <$> subs where
     go' (JSubroutineDec (JSubroutineHeader kind (ty, sName) args) _) = 
       (cName ++ "." ++ sName, (ty, kind, length args))
+
+buildLTable :: [JTypeAndId] -> [JTypeAndId] -> Table
+buildLTable args lcls = 
+  (go "argument" args 0 Map.empty) `Map.union` (go "local" lcls 0 Map.empty) where
+    go _ [] _ t = t
+    go kind ((ty, name):xs) n t = go kind xs (n + 1) $ Map.insert name (ty, kind, n) t
        
 --data JSubroutineDec = JSubroutineDec JSubroutineHeader JSubroutineBody deriving (Show, Eq)
 --data JSubroutineHeader = JSubroutineHeader JSubroutineType JTypeAndId [JTypeAndId] deriving (Show, Eq)
@@ -321,12 +328,73 @@ buildSRTable xs = Map.fromList $ mconcat $ go <$> xs where
 
 vSubroutine :: ClassTable -> JSubroutineDec -> [Char]
 vSubroutine cTable sub = 
-  "function " ++ name ++ "." ++ sName ++ " " ++ show (nLcls - 1) ++ "\n" ++ 
-  (if sType == "constructor" vNew cTable else "")
-  mconcat $ vStatement <$> stmts where 
-    JSubroutineDec (JSubroutineHeader kind)
-    vNew (C _ _ n) = "push constant " ++ show n ++ "\ncall Memory.alloc 1\n" ++
-                     "pop pointer 0\n"
+  vFunction (cName ++ "." ++ sName) nLcls ++ 
+  (if sType == "constructor" vNew n else "") ++
+  mconcat $ vStmts where 
+    C cName t n = cTable
+    JSubroutineDec (JSubroutineHeader _ (_, sName) args) (JSubroutineBody lcls stmts) = sub
+    nLcls = length lcls
+    s = buildLTable args lcls
+    vStmts = vStatement t s sName 0 stmts
+
+-- data JStatement = JLetStatment JVarId JExpression 
+                -- | JIfStatement JExpression [JStatement] (Maybe [JStatement])
+                -- | JWhileStatment JExpression [JStatement]
+                -- | JDoStatement JSubroutineCall
+                -- | JReturnStatement (Maybe JExpression) 
+
+vStatement _ _ _ _ [] = ""
+
+vStatement t s name n ((JLetStatment var exp):stmts) =
+-- vExpression: push the result of exp; vPopToVar: pop to the var addr
+  vExpression t s exp ++ vPopToVar t s var ++ vStatement t s name n stmts 
+
+vStatement t s name n ((JIfStatement cond thenStmts elseStmts):stmts) =
+  vExpression t s cond ++ vNot ++ vThen thenStmts ++ 
+  maybe (vLabel labelElse) vElse elseStmts ++ vStatement t s name (n + 1) stmts where 
+    labelElse = name ++ ".Else" ++ show n
+    labelEndIf = name ++ ".Endif" ++ show n
+    vThen xs = vIfGoto labelElse ++ vStatement t s labelElse 0 xs
+    vElse xs = vGoto labelEndIf ++ vLabel labelElse ++ 
+               vStatement t s labelIf 0 xs ++ vLabel labelEndIf
+
+vStatement t s name n ((JWhileStatment cond loopStmts):stmts) = 
+  vLabel labelWhile ++ vExpression t s cond ++ vNot ++ vIfGoto labelEndWhile ++ 
+  vStatement t s labelWhile 0 loopStmts ++ vGoto labelWhile ++ 
+  vLabel labelEndWhile ++ vStatement t s name (n + 1) stmts where
+    labelWhile = name ++ ".While" ++ show n
+    labelEndWhile = name ++ ".EndWhile" ++ show n
+
+vStatement t s name n ((JDoStatement subCall):stmts) =
+  vSubroutineCall subCall ++ vPop "temp" 0 ++ vStatement t s name n stmts
+
+vStatement t s name n ((JReturnStatement ret):stmts) =
+  maybe (vPush "constant" 0) (vExpression t s) ret ++ vReturn ++
+  vStatement t s name n stmts
+
+-- data JExpression = JIntConst Int 
+           -- | JStrConst [Char]
+           -- | JKeywordConst [Char]       -- can only be true, false, null or this
+           -- | JExpVar JVarId
+           -- | JExpCall JSubroutineCall 
+           -- | JExpUna JUOp JExpression     -- JOp can only be - or ~ here
+           -- | JExpBin JExpression [(JBOp, JExpression)]
+
+vExpression t s (JIntConst n) = push "constant" n
+vExpression t s (JStrConst xs) = 
+
+
+
+vNew n = vPush "constant" n ++ vCall "Memory.alloc" 1 ++ vPop "pointer" 0
+vNot = "not\n"
+vReturn = "return\n"
+vLabel xs = "label " ++ xs ++ "\n"
+vGoto xs = "goto " ++ xs ++ "\n"
+vIfGoto xs = "if-goto " ++ xs ++ "\n"
+vFunction xs n = "function " ++ xs ++ " " ++ show n ++ "\n"
+vCall xs n = "call " ++ xs ++ " " ++ show n ++ "\n"
+vPush xs n = "push " ++ xs ++ " " ++ show n ++ "\n"
+vPop xs n = "pop " ++ xs ++ " " ++ show n ++ "\n"
 
 --vClass :: JClass -> [Char]
 --vClass (JClass cName cVars subs) =
