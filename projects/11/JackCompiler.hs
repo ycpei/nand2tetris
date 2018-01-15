@@ -15,6 +15,7 @@ import Control.Monad
 import Data.Char
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Debug.Trace
 
 data JClass = JClass JIdentifier [JClassVarDec] [JSubroutineDec] deriving (Show, Eq)
 data JClassVarDec = JClassVarDec JClassVarScope JTypeAndId deriving (Show, Eq)
@@ -61,6 +62,7 @@ classVarScopeStrs = ["static", "field"]
 subroutineTypeStrs = ["constructor", "function", "method"]
 alphaUnderscore = ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['_']
 alphaNumUnderscore = alphaUnderscore ++ ['0'..'9']
+alphaNumUnderscoredot = '.':alphaNumUnderscore
 
 parse' parser = parse parser ""
 
@@ -300,6 +302,7 @@ someArgs = do
   many jSpace >> char ')'
   return exps
 
+
 -- vm writer starts from here
 
 buildCTable :: [JClassVarDec] -> (Table, Int)
@@ -329,11 +332,11 @@ buildLTable args lcls =
 --data JSubroutineHeader = JSubroutineHeader JSubroutineType JTypeAndId [JTypeAndId] deriving (Show, Eq)
 --data JSubroutineBody = JSubroutineBody [JTypeAndId] [JStatement] deriving (Show, Eq)
 
-jackCompiler :: [[Char]] -> [[Char]]
-jackCompiler = vmWriter . fmap (fromRight (JClass "" [] []) . jackReader)
+jackCompiler :: Table -> [[Char]] -> [[Char]]
+jackCompiler initTable = vmWriter initTable . fmap (fromRight (JClass "" [] []) . jackReader)
 
-vmWriter :: [JClass] -> [[Char]]
-vmWriter xs = vClass (buildSRTable xs) <$> xs
+vmWriter :: Table -> [JClass] -> [[Char]]
+vmWriter initTable xs = vClass (buildSRTable xs `Map.union` initTable) <$> xs
 
 vClass :: Table -> JClass -> [Char]
 vClass u (JClass name vars subs) = mconcat $ vSubroutineDec name t u n <$> subs where
@@ -342,7 +345,7 @@ vClass u (JClass name vars subs) = mconcat $ vSubroutineDec name t u n <$> subs 
 vSubroutineDec :: [Char] -> Table -> Table -> Int -> JSubroutineDec -> [Char]
 vSubroutineDec cName t u n sub = 
   vFunction (cName ++ "." ++ sName) nLcls ++ kindSpec ++
-  vStatement t s u sName 0 stmts where 
+  vStatement t s u cName sName 0 stmts where 
     JSubroutineDec (JSubroutineHeader _ (_, sName) args) (JSubroutineBody lcls stmts) = sub
     nLcls = length lcls
     s = buildLTable args lcls
@@ -359,35 +362,35 @@ vSubroutineDec cName t u n sub =
                 -- | JDoStatement JSubroutineCall
                 -- | JReturnStatement (Maybe JExpression) 
 
-vStatement _ _ _ _ _ [] = ""
+vStatement _ _ _ _ _ _ [] = ""
 
-vStatement t s u name n ((JLetStatment var exp):stmts) =
+vStatement t s u cName name n ((JLetStatment var exp):stmts) =
 -- vExpression: push the result of exp; vPopToVar: pop to the var addr
-  vExpression t s u name exp ++ vPopToVar t s u name var ++ vStatement t s u name n stmts 
+  vExpression t s u cName exp ++ vPopToVar t s u cName var ++ vStatement t s u cName name n stmts 
 
-vStatement t s u name n ((JIfStatement cond thenStmts elseStmts):stmts) =
-  vExpression t s u name cond ++ vNot ++ vThen thenStmts ++ 
-  maybe (vLabel labelElse) vElse elseStmts ++ vStatement t s u name (n + 1) stmts where 
+vStatement t s u cName name n ((JIfStatement cond thenStmts elseStmts):stmts) =
+  vExpression t s u cName cond ++ vNot ++ vThen thenStmts ++ 
+  maybe (vLabel labelElse) vElse elseStmts ++ vStatement t s u cName name (n + 1) stmts where 
     labelElse = name ++ ".Else" ++ show n
     labelEndIf = name ++ ".Endif" ++ show n
     labelIf = name ++ ".If" ++ show n
-    vThen xs = vIfGoto labelElse ++ vStatement t s u labelElse 0 xs
+    vThen xs = vIfGoto labelElse ++ vStatement t s u cName labelElse 0 xs
     vElse xs = vGoto labelEndIf ++ vLabel labelElse ++ 
-               vStatement t s u labelIf 0 xs ++ vLabel labelEndIf
+               vStatement t s u cName labelIf 0 xs ++ vLabel labelEndIf
 
-vStatement t s u name n ((JWhileStatment cond loopStmts):stmts) = 
-  vLabel labelWhile ++ vExpression t s u name cond ++ vNot ++ vIfGoto labelEndWhile ++ 
-  vStatement t s u labelWhile 0 loopStmts ++ vGoto labelWhile ++ 
-  vLabel labelEndWhile ++ vStatement t s u name (n + 1) stmts where
+vStatement t s u cName name n ((JWhileStatment cond loopStmts):stmts) = 
+  vLabel labelWhile ++ vExpression t s u cName cond ++ vNot ++ vIfGoto labelEndWhile ++ 
+  vStatement t s u cName labelWhile 0 loopStmts ++ vGoto labelWhile ++ 
+  vLabel labelEndWhile ++ vStatement t s u cName name (n + 1) stmts where
     labelWhile = name ++ ".While" ++ show n
     labelEndWhile = name ++ ".EndWhile" ++ show n
 
-vStatement t s u name n ((JDoStatement subCall):stmts) =
-  vSubroutineCall t s u name subCall ++ vPop "temp" 0 ++ vStatement t s u name n stmts
+vStatement t s u cName name n ((JDoStatement subCall):stmts) =
+  vSubroutineCall t s u cName subCall ++ vPop "temp" 0 ++ vStatement t s u cName name n stmts
 
-vStatement t s u name n ((JReturnStatement ret):stmts) =
-  maybe (vPush "constant" 0) (vExpression t s u name) ret ++ vReturn ++
-  vStatement t s u name n stmts
+vStatement t s u cName name n ((JReturnStatement ret):stmts) =
+  maybe (vPush "constant" 0) (vExpression t s u cName) ret ++ vReturn ++
+  vStatement t s u cName name n stmts
 
 -- data JExpression = JIntConst Int 
            -- | JStrConst [Char]
@@ -451,14 +454,17 @@ vSubroutineCall t s u cName (JSubroutineCall name name' args) =
   method ++ mconcat (vExpression t s u cName <$> args) ++ vCall name'' nArgs
     where 
       name'' = if name' == Nothing 
-                 then cName ++ "." ++ name 
+                 then cName ++ "." ++ name
                  else if head name `elem` ['A' .. 'Z'] 
                         then name ++ "." ++ fromJust name'
                         else getType t s name ++ "." ++ fromJust name'
       -- u is the SRTable
+      --hello = trace (cName ++ " " ++ name ++ " " ++ show name') ""
       (method, nArgs) = 
          if fst (u Map.! name'') == "method"
-           then let (seg, n) = getSegN t s name in (vPush seg n, length args + 1)
+           then if name' == Nothing 
+                  then (vPush "pointer" 0, length args + 1)
+                  else let (seg, n) = getSegN t s name in (vPush seg n, length args + 1)
            else ("", length args)
 
 vNew n = vPush "constant" n ++ vCall "Memory.alloc" 1 ++ vPop "pointer" 0
@@ -467,7 +473,7 @@ vNot = "not\n"
 vNeg = "neg\n"
 vSub = "sub\n"
 vMul = "call Math.multiply 2\n"
-vDiv = "call Math.division 2\n"
+vDiv = "call Math.divide 2\n"
 vAnd = "and\n"
 vOr = "or\n"
 vLt = "lt\n"
@@ -482,12 +488,30 @@ vCall xs n = "call " ++ xs ++ " " ++ show n ++ "\n"
 vPush xs n = "push " ++ xs ++ " " ++ show n ++ "\n"
 vPop xs n = "pop " ++ xs ++ " " ++ show n ++ "\n"
 
-inputSeven = ["// This file is part of www.nand2tetris.org\n// and the book \"The Elements of Computing Systems\"\n// by Nisan and Schocken, MIT Press.\n// File name: projects/11/Seven/Main.jack\n\n/**\n * Computes the value of 1 + (2 * 3) and prints the result\n * at the top-left of the screen.  \n */\nclass Main {\n\n   function void main() {\n      do Output.printInt(1 + (2 * 3));\n      return;\n   }\n}\n"]
 
-inputSeven1 = "do Output.printInt(1 + (2 * 3));"
+-- testing
 
-test reader writer x = let Right y = parse' reader x in writer y
-test' x = let Right y = parse' jStatement x in vStatement Map.empty Map.empty Map.empty "" 0 [y]
+testCompiler :: [[Char]] -> IO ()
+testCompiler xs = do
+  initTable <- sysSubroutineTable
+  print $ jackCompiler initTable xs
+
+testCompiler' :: IO ()
+testCompiler' = do
+  --xs <- readFile "./Square/Square.jack"
+  xs <- readFile "./Test.jack"
+  testCompiler [xs]
+
+testReader :: IO ()
+testReader = do
+  --xs <- readFile "./Square/Square.jack"
+  xs <- readFile "./Test.jack"
+  --print $ buildSRTable $ rights $ [jackReader $ xs]
+  print $ jackReader $ xs
+
+
+--test reader writer x = let Right y = parse' reader x in writer y
+--test' x = let Right y = parse' jStatement x in vStatement Map.empty Map.empty Map.empty "" 0 [y]
 
 {--
 fst3 (x, y, z) = x
@@ -504,13 +528,22 @@ replCrWithNl = fmap cr2nl
 
 -- IO
 
-{--
+-- reader of system subroutines' headers
+jClasses :: JackParser [JClass]
+jClasses = many (try $ many jSpace >> jClass)
+
+sysSubroutineTable :: IO Table
+sysSubroutineTable = do
+  x <- readFile "./systemsub.txt"
+  return $ buildSRTable $ head $ rights [parse' jClasses x]
+
 main = do
   dir <- head <$> getArgs
   filesWODir <- filter isJackFile <$> listDirectory dir 
   let jackFiles = (dir++) <$> filesWODir
   codes <- sequence $ readFile <$> jackFiles
-  zipWithM writeFile (chExt <$> jackFiles) (show . jack <$> codes)
+  initTable <- sysSubroutineTable
+  zipWithM writeFile (chExt <$> jackFiles) (jackCompiler initTable codes)
     where isJackFile xs = drop (length xs - 5) xs == ".jack"
-          chExt xs = take (length xs - 4) xs ++ "ast"
+          chExt xs = take (length xs - 4) xs ++ "vm"
           --}
