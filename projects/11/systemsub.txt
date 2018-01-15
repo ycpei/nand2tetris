@@ -1,4 +1,5 @@
 class Math{
+function int abs(int x, int y){}
 function int multiply(int x, int y){}
 function int divide(int x, int y){}
 function int min(int x, int y){}

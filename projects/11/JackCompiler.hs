@@ -499,13 +499,13 @@ testCompiler xs = do
 testCompiler' :: IO ()
 testCompiler' = do
   --xs <- readFile "./Square/Square.jack"
-  xs <- readFile "./Test.jack"
+  xs <- readFile "./Pong/Ball.jack"
   testCompiler [xs]
 
 testReader :: IO ()
 testReader = do
   --xs <- readFile "./Square/Square.jack"
-  xs <- readFile "./Test.jack"
+  xs <- readFile "./Pong/Ball.jack"
   --print $ buildSRTable $ rights $ [jackReader $ xs]
   print $ jackReader $ xs
 
