@@ -1,6 +1,6 @@
 -- Jack Compiler, as the coursework of Project 11 of Nand2Tetris course.
 -- Author: Yuchen Pei (me@ypei.me)
--- Date: 2018-01-12
+-- Date: 2018-01-15
 {-# LANGUAGE FlexibleContexts #-}
 import Text.Parsec.Prim
 import Text.Parsec.Char
@@ -66,7 +66,6 @@ alphaNumUnderscoredot = '.':alphaNumUnderscore
 
 parse' parser = parse parser ""
 
---jack xs = parse' (many jSpace >> jClass) (replCrWithNl xs)
 jackReader = parse' (many jSpace >> jClass)
 
 jClass :: JackParser JClass
@@ -322,9 +321,9 @@ buildSRTable xs = Map.fromList $ mconcat $ go <$> xs where
       (cName ++ "." ++ sName, (kind, (ty, nArgs))) where
         nArgs = length args + if kind == "method" then 1 else 0
 
-buildLTable :: [JTypeAndId] -> [JTypeAndId] -> Table
-buildLTable args lcls = 
-  (go "argument" args 0 Map.empty) `Map.union` (go "local" lcls 0 Map.empty) where
+buildLTable :: Bool -> [JTypeAndId] -> [JTypeAndId] -> Table
+buildLTable isMethod args lcls = 
+  (go "argument" args (if isMethod then 1 else 0) Map.empty) `Map.union` (go "local" lcls 0 Map.empty) where
     go _ [] _ t = t
     go kind ((ty, name):xs) n t = go kind xs (n + 1) $ Map.insert name (ty, (kind, n)) t
        
@@ -348,8 +347,8 @@ vSubroutineDec cName t u n sub =
   vStatement t s u cName sName 0 stmts where 
     JSubroutineDec (JSubroutineHeader _ (_, sName) args) (JSubroutineBody lcls stmts) = sub
     nLcls = length lcls
-    s = buildLTable args lcls
     kind = fst $ u Map.! (cName ++ "." ++ sName)
+    s = buildLTable (kind == "method") args lcls
     kindSpec = if kind == "constructor" 
       then vNew n 
       else if kind == "method"
@@ -364,8 +363,9 @@ vSubroutineDec cName t u n sub =
 
 vStatement _ _ _ _ _ _ [] = ""
 
-vStatement t s u cName name n ((JLetStatment var exp):stmts) =
 -- vExpression: push the result of exp; vPopToVar: pop to the var addr
+
+vStatement t s u cName name n ((JLetStatment var exp):stmts) =
   vExpression t s u cName exp ++ vPopToVar t s u cName var ++ vStatement t s u cName name n stmts 
 
 vStatement t s u cName name n ((JIfStatement cond thenStmts elseStmts):stmts) =
@@ -459,7 +459,6 @@ vSubroutineCall t s u cName (JSubroutineCall name name' args) =
                         then name ++ "." ++ fromJust name'
                         else getType t s name ++ "." ++ fromJust name'
       -- u is the SRTable
-      --hello = trace (cName ++ " " ++ name ++ " " ++ show name') ""
       (method, nArgs) = 
          if fst (u Map.! name'') == "method"
            then if name' == Nothing 
@@ -489,7 +488,30 @@ vPush xs n = "push " ++ xs ++ " " ++ show n ++ "\n"
 vPop xs n = "pop " ++ xs ++ " " ++ show n ++ "\n"
 
 
--- testing
+-- IO
+
+-- reader of system subroutines' headers
+jClasses :: JackParser [JClass]
+jClasses = many (try $ many jSpace >> jClass)
+
+sysSubroutineTable :: IO Table
+sysSubroutineTable = do
+  x <- readFile "./systemsub.txt"
+  return $ buildSRTable $ head $ rights [parse' jClasses x]
+
+main = do
+  dir <- head <$> getArgs
+  filesWODir <- filter isJackFile <$> listDirectory dir 
+  let jackFiles = (dir++) <$> filesWODir
+  codes <- sequence $ readFile <$> jackFiles
+  initTable <- sysSubroutineTable
+  zipWithM writeFile (chExt <$> jackFiles) (jackCompiler initTable codes)
+    where isJackFile xs = drop (length xs - 5) xs == ".jack"
+          chExt xs = take (length xs - 4) xs ++ "vm"
+          --}
+
+
+--testing
 
 testCompiler :: [[Char]] -> IO ()
 testCompiler xs = do
@@ -513,37 +535,4 @@ testReader = do
 --test reader writer x = let Right y = parse' reader x in writer y
 --test' x = let Right y = parse' jStatement x in vStatement Map.empty Map.empty Map.empty "" 0 [y]
 
-{--
-fst3 (x, y, z) = x
-snd3 (x, y, z) = y
-trd3 (x, y, z) = z
---}
 
-{--
-replCrWithNl :: [Char] -> [Char]
-replCrWithNl = fmap cr2nl 
-  where cr2nl '\r' = '\n'
-        cr2nl c = c
-        --}
-
--- IO
-
--- reader of system subroutines' headers
-jClasses :: JackParser [JClass]
-jClasses = many (try $ many jSpace >> jClass)
-
-sysSubroutineTable :: IO Table
-sysSubroutineTable = do
-  x <- readFile "./systemsub.txt"
-  return $ buildSRTable $ head $ rights [parse' jClasses x]
-
-main = do
-  dir <- head <$> getArgs
-  filesWODir <- filter isJackFile <$> listDirectory dir 
-  let jackFiles = (dir++) <$> filesWODir
-  codes <- sequence $ readFile <$> jackFiles
-  initTable <- sysSubroutineTable
-  zipWithM writeFile (chExt <$> jackFiles) (jackCompiler initTable codes)
-    where isJackFile xs = drop (length xs - 5) xs == ".jack"
-          chExt xs = take (length xs - 4) xs ++ "vm"
-          --}
