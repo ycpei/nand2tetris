@@ -26,6 +26,7 @@ class Screen {
             let i = i + 1;
         }
         let screen = 16384;
+        let color = true;
         return;
     }
 
@@ -34,7 +35,7 @@ class Screen {
         var boolean c;
         let c = color;
         let color = false;
-        do drawRectangle(0, 0, 511, 255);
+        do Screen.drawRectangle(0, 0, 511, 255);
         let color = c;
         return;
     }
@@ -59,17 +60,17 @@ class Screen {
         if (color) {
             let screen[addr] = screen[addr] | twoToThe[x - (t * 16)];
         } else {
-            let screen[addr] = screen[addr] & (- (twoToThe[x - (t * 16)] + 1))
+            let screen[addr] = screen[addr] & (- (twoToThe[x - (t * 16)] + 1));
         }
         return;
     }
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
     function void drawLine(int x1, int y1, int x2, int y2) {
-        var int dx, dy, x, y, diff;
+        var int dx, dy, x, y, a, b, diff;
         let x = x1;
         let y = y1;
-        do drawPixel(x, y);
+        do Screen.drawPixel(x, y);
         if (x1 = x2) {
             if (y1 = y2) {
                 return;
@@ -97,19 +98,22 @@ class Screen {
                 let y = y + b;
                 let diff = diff - dx;
             }
-            do drawPixel(x, y);
+            do Screen.drawPixel(x, y);
         }
+        return;
     }
 
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      * and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
+        var int x;
         if ((x1 > x2) | (y1 > y2)) {
             return;
         }
         let x = x1;
         while (~(x > x2)) {
-            do drawLine(x, y1, x, y2);
+            do Screen.drawLine(x, y1, x, y2);
+            let x = x + 1;
         }
         return;
     }
@@ -118,15 +122,15 @@ class Screen {
     function void drawCircle(int x, int y, int r) {
         var int dx, dy, r2;
         if (r > 181) {
-            String.println("drawCircle: radius too big!");
-            Sys.error(2);
+            do String.println("drawCircle: radius too big!");
+            do Sys.error(2);
             return;
         }
         let dy = -r;
         let r2 = r * r;
         while (~(dy > r)) {
             let dx = Math.sqrt(r2 - (dy * dy));
-            do drawLine(x - dx, y + dy, x + dx, y + dy);
+            do Screen.drawLine(x - dx, y + dy, x + dx, y + dy);
             let dy = dy + 1;
         }
         return;
