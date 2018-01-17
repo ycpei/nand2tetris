@@ -199,20 +199,21 @@ class Output {
     function void printChar(char c) {
         var int k, x, y, addr;
         var Array cm;
-        if (c = 8) {
+        if (c = 129) {
             do Output.backSpace();
             return;
         }
         if (cursorI = 22) {
-            if (c = 10) {
+            if (c = 128) {
                 return;
             }
             if (cursorJ = 63) {
                 return;
             }
         }
-        if (c = 10) {
+        if (c = 128) {
             do Output.println();
+            return;
         }
         let k = 0;
         let x = cursorJ / 2;
@@ -282,7 +283,9 @@ class Output {
 
     /** Advances the cursor to the beginning of the next line. */
     function void println() {
-        do Output.moveCursor(cursorI + 1, 0);   
+        if (cursorI < 22) {
+            do Output.moveCursor(cursorI + 1, 0);   
+        }
         return;
     }
 

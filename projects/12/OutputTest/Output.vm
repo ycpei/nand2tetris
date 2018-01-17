@@ -1531,7 +1531,7 @@ push constant 0
 return
 function Output.printChar 5
 push argument 0
-push constant 8
+push constant 129
 eq
 if-goto IF_TRUE0
 goto IF_FALSE0
@@ -1548,7 +1548,7 @@ if-goto IF_TRUE1
 goto IF_FALSE1
 label IF_TRUE1
 push argument 0
-push constant 10
+push constant 128
 eq
 if-goto IF_TRUE2
 goto IF_FALSE2
@@ -1567,13 +1567,15 @@ return
 label IF_FALSE3
 label IF_FALSE1
 push argument 0
-push constant 10
+push constant 128
 eq
 if-goto IF_TRUE4
 goto IF_FALSE4
 label IF_TRUE4
 call Output.println 0
 pop temp 0
+push constant 0
+return
 label IF_FALSE4
 push constant 0
 pop local 0
@@ -1788,11 +1790,18 @@ push constant 0
 return
 function Output.println 0
 push static 1
+push constant 22
+lt
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push static 1
 push constant 1
 add
 push constant 0
 call Output.moveCursor 2
 pop temp 0
+label IF_FALSE0
 push constant 0
 return
 function Output.backSpace 0
