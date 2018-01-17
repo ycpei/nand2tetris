@@ -19,6 +19,7 @@ class Memory {
         let heap = 2048;
         let heap[0] = -1;
         let heap[1] = 14334;
+        return;
     }
 
     /** Returns the RAM value at the given address. */
@@ -29,6 +30,7 @@ class Memory {
     /** Sets the RAM value at the given address to the given value. */
     function void poke(int address, int value) {
         let memory[address] = value;
+        return;
     }
 
     /** Finds an available RAM block of the given size and returns
@@ -43,8 +45,9 @@ class Memory {
             let current = heap[current];
         }
         if (current = -1) {
-            String.println("Insufficient space for allocation!");
-            Sys.error(1);
+            do String.println("Insufficient space for allocation!");
+            do Sys.error(1);
+            return -1;
         } else {
             let heap[current + 1] = heap[current + 1] - size2;
             let newLast = current + heap[current + 1] + 2;
@@ -58,7 +61,7 @@ class Memory {
     /** De-allocates the given object (cast as an array) by making
      *  it available for future allocations. */
     function void deAlloc(Array o) {
-        var int base;
+        var int oBase;
         var int current;
         var int prev;
         let prev = 0;
@@ -69,10 +72,11 @@ class Memory {
             let current = heap[current];
         }
         if (current = -1) {
-            String.println("The impossible happened");
-            Sys.error(1);
+            do String.println("The impossible happened");
+            do Sys.error(1);
+            return;
         } else {
-            let heap[prev] = heap[current]
+            let heap[prev] = heap[current];
             let heap[prev + 1] = heap[prev] - prev - 2;
             return;
         }
