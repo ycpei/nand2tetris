@@ -254,30 +254,10 @@ class Output {
     /** Displays the given integer starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
-        var int n, k, j;
-        var Array s;
-        if (i = 0) {
-            do Output.printChar(48);
-            return;
-        }
-        let n = i;
-        if (i < 0) {
-            do Output.printChar(45);
-            let n = -n;
-        }
-        let s = Array.new(5);
-        let j = 0;
-        while (n > 0) {
-            let k = n / 10;
-            let s[j] = 48 + n - (k * 10);
-            let n = k;
-            let j = j + 1;
-        }
-        while (j > 0) {
-            let j = j - 1;
-            do Output.printChar(s[j]);
-        }
-        //do Output.printString(s);
+        var String s;
+        let s = String.new(6);
+        do s.setInt(i);
+        do Output.printString(s);
         return;
     }
 
