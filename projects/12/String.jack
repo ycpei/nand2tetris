@@ -11,39 +11,102 @@
  * string-oriented operations.
  */
 class String {
+    field int maxLen;
+    field int len;
+    field Array s;
 
     /** constructs a new empty string with a maximum length of maxLength
      *  and initial length of 0. */
     constructor String new(int maxLength) {
+        let s = new Array(maxLength);
+        let maxLen = maxLength;
+        let len = 0;
+        return this;
     }
 
     /** Disposes this string. */
     method void dispose() {
+        do s.dispose();
+        do Memory.deAlloc(this);
+        return;
     }
 
     /** Returns the current length of this string. */
     method int length() {
+        return len;
     }
 
     /** Returns the character at the j-th location of this string. */
     method char charAt(int j) {
+        if ((j < 0) | (j + 1 > len)){
+            Output.printString("String.charAt: index out of range!");
+            Sys.error(5);
+        }
+        return s[j];
     }
 
     /** Sets the character at the j-th location of this string to c. */
     method void setCharAt(int j, char c) {
+        let s[j] = c;
+        return;
     }
 
     /** Appends c to this string's end and returns this string. */
     method String appendChar(char c) {
+        if (len = maxLen) {
+            Output.printString("String.appendChar: reached max length!");
+            Sys.error(5);
+        }
+        let s[len] = c;
+        let len = len + 1;
+        return this;
     }
 
     /** Erases the last character from this string. */
     method void eraseLastChar() {
+        if (len = 0){
+            Output.printString("String.eraseLastChar: string is already empty!");
+            Sys.error(5);
+        }
+        let len = len - 1;
+        return;
     }
 
     /** Returns the integer value of this string, 
      *  until a non-digit character is detected. */
     method int intValue() {
+        var int n, i;
+        var char c;
+        var boolean neg, done;
+        let n = 0;
+        if (s[0] = 45) {
+            let i = 1;
+            let neg = true;
+        } else {
+            let i = 0;
+            let neg = false;
+        }
+        let c = s[i];
+        if ((t < 48) | (t > 57)) {
+            do Sys.error(3);
+            do Output.printString("String.intValue: the input data is not number!");
+        }
+        let done = false;
+        while ((~done) & (i < len)) {
+            let t = s[i];
+            if ((t > 47) & (t < 58)) {
+                let n = n * 10 + (t - 48);
+            } else {
+                let done = true;
+            }
+            let i = i + 1;
+        }
+        if (neg) {
+            return -n;
+        } else {
+            return n;
+        }
+
     }
 
     /** Sets this string to hold a representation of the given value. */
@@ -52,13 +115,16 @@ class String {
 
     /** Returns the new line character. */
     function char newLine() {
+        return 128;
     }
 
     /** Returns the backspace character. */
     function char backSpace() {
+        return 129;
     }
 
     /** Returns the double quote (") character. */
     function char doubleQuote() {
+        return 34;
     }
 }

@@ -89,37 +89,9 @@ class Keyboard {
      * entered text is detected). Also handles user backspaces. 
      */
     function int readInt(String message) {
-        var int n, i;
-        var char t;
         var String s;
-        var boolean neg, done;
         do Output.printString(message);
-        let n = 0;
-        let neg = false;
         let s = Keyboard.readLine("");
-        let i = 0;
-        if (s.charAt(0) = 45) {
-            let i = 1;
-            let neg = true;
-        }
-        let t = s.charAt(i);
-        if ((t < 48) | (t > 57)) {
-            do Sys.error(3);
-            do Output.printString("Keyboard.readInt: the input data is not number!");
-        }
-        let done = false;
-        while (~done) {
-            if ((s.charAt(i) > 47) & (s.charAt(i) < 58)) {
-                let n = n * 10 + (s.charAt(i) - 48);
-            } else {
-                let done = true;
-            }
-            let i = i + 1;
-            let done = done | (i + 1 > s.length());
-        }
-        if (neg) {
-            let n = - n;
-        }
-        return n;
+        return s.intValue();
     }
 }
