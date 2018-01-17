@@ -18,9 +18,12 @@ class Output {
 
     // Character map for displaying characters
     static Array charMaps; 
+    static int cursorI, cursorJ;
 
     /** Initializes the screen, and locates the cursor at the screen's top-left. */
     function void init() {
+        do Output.moveCursor(0, 0);
+        return;
     }
 
     // Initializes the character map array
@@ -71,7 +74,7 @@ class Output {
         do Output.create(64,30,51,51,59,59,59,27,3,30,0,0);  // @
         do Output.create(63,30,51,51,24,12,12,0,12,12,0,0);  // ?
 
-        do Output.create(65,0,0,0,0,0,0,0,0,0,0,0);          // A ** TO BE FILLED **
+        do Output.create(65,12,12,30,30,51,51,63,51,51,0,0);          // A ** TO BE FILLED **
         do Output.create(66,31,51,51,51,31,51,51,51,31,0,0); // B
         do Output.create(67,28,54,35,3,3,3,35,54,28,0,0);    // C
         do Output.create(68,15,27,51,51,51,51,51,27,15,0,0); // D
@@ -176,11 +179,45 @@ class Output {
     /** Moves the cursor to the j-th column of the i-th row,
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
+        var int x, y;
+        let x = j * 8;
+        let y = i * 11;
+        do Screen.setColor(true);
+        do Screen.drawRectangle(x, y, x + 7, y + 10);
+        let cursorI = i;
+        let cursorJ = j;
+        return;
     }
 
     /** Displays the given character at the cursor location,
      *  and advances the cursor one column forward. */
     function void printChar(char c) {
+        var int k, x, y, addr;
+        var Array cm;
+        if (c = 8) {
+            do Output.backspace();
+            return;
+        }
+        let k = 0;
+        let x = cursorI / 2;
+        let y = cursorI - (x * 2); // y = 0: lsb, y = 1: msb
+        let addr = cursorJ * 352 + x + 16384;
+        let cm = getMap(c);
+        while (k < 11) {
+            if (y = 0){
+                do Memory.poke(addr, Memory.peek(addr) & (-128) + cm[k]);
+            } else {
+                do Memory.poke(addr, Memory.peek(addr) & 255 + (cm[k] * 256));
+            }
+            let k = k + 1;
+            let addr = addr + 32;
+        }
+        if (cursorJ = 31) {
+            do Output.moveCursor(cursorI + 1, 0);
+        } else {
+            do Output.moveCursor(cursorI, cursorJ + 1);
+        }
+        return;
     }
 
     /** displays the given string starting at the cursor location,
