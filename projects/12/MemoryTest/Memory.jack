@@ -11,7 +11,7 @@
 class Memory {
     static Array memory;
     static Array heap;
-    static int first;
+    static int last;
 
     /** Initializes the class. */
     function void init() {
@@ -19,6 +19,7 @@ class Memory {
         let heap = 2048;
         let heap[0] = -1;
         let heap[1] = 14334;
+        let last = 0;
         return;
     }
 
@@ -62,23 +63,10 @@ class Memory {
      *  it available for future allocations. */
     function void deAlloc(Array o) {
         var int oBase;
-        var int current;
-        var int prev;
-        let prev = 0;
-        let current = heap[prev];
         let oBase = o - heap - 2;
-        while ((current > -1) & (~(current = oBase))){
-            let prev = current;
-            let current = heap[current];
-        }
-        if (current = -1) {
-            do String.println("The impossible happened");
-            do Sys.error(1);
-            return;
-        } else {
-            let heap[prev] = heap[current];
-            let heap[prev + 1] = heap[prev] - prev - 2;
-            return;
-        }
+        let heap[oBase] = -1;
+        let heap[last] = oBase;
+        let last = oBase;
+        return;
     }    
 }
