@@ -1,6 +1,7 @@
 class Main {
     function void main() {
         var KGame game;
+        do Board.init();
         let game = KGame.new();
         do game.run();
         do game.dispose();
