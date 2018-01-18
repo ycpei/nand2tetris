@@ -14,7 +14,7 @@ class KGame{
     }
 
     method void run() {
-        var int key, dir, key1, st;
+        var int key, key1, st;
         var boolean exit;
         let exit = false;
         while (~exit) {

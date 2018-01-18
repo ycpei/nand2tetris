@@ -1,14 +1,7 @@
-/** 
-improvments:
-- do in place transposition
-- add a static string boardBar = "+----+"
-- change printString("|") to printChar
-- change the grid to static variable?
-*/
 class Board {
     field Array grid;
     field int nTurn, seed, status;      // status: 0: begin game; 1: in game; 2: lose; 3: win; 
-    static String boardBar, strLost, strCont, strGameOver, strWon;
+    static String boardBar, strLost, strCont, strGameOver, strWon, strTurn;
 
     constructor Board new() {
         var int i;
@@ -29,6 +22,7 @@ class Board {
         let strWon = "You won!";
         let strCont = "Press any key to continue";
         let strGameOver = "Game over!";
+        let strTurn = "Turn: ";
         return;
     }
 
@@ -320,7 +314,7 @@ class Board {
             }
 
             do Output.moveCursor(r + 6, c - 2);
-            do Output.printString("Turn: ");
+            do Output.printString(strTurn);
             do Output.printInt(nTurn);
         }}}
         return;

@@ -20,19 +20,19 @@ call Memory.deAlloc 1
 pop temp 0
 push constant 0
 return
-function KGame.run 5
+function KGame.run 4
 push argument 0
 pop pointer 0
 push constant 0
-pop local 4
+pop local 3
 label WHILE_EXP0
-push local 4
+push local 3
 not
 not
 if-goto WHILE_END0
 push this 0
 call Board.getStatus 1
-pop local 3
+pop local 2
 push constant 0
 pop local 0
 label WHILE_EXP1
@@ -46,16 +46,16 @@ pop local 0
 goto WHILE_EXP1
 label WHILE_END1
 push local 0
-pop local 2
+pop local 1
 label WHILE_EXP2
-push local 2
+push local 1
 push constant 0
 eq
 not
 not
 if-goto WHILE_END2
 call Keyboard.keyPressed 0
-pop local 2
+pop local 1
 goto WHILE_EXP2
 label WHILE_END2
 push local 0
@@ -66,10 +66,10 @@ goto IF_FALSE0
 label IF_TRUE0
 push constant 0
 not
-pop local 4
+pop local 3
 goto IF_END0
 label IF_FALSE0
-push local 3
+push local 2
 push constant 0
 eq
 if-goto IF_TRUE1
@@ -86,10 +86,10 @@ call Board.draw 1
 pop temp 0
 goto IF_END1
 label IF_FALSE1
-push local 3
+push local 2
 push constant 2
 eq
-push local 3
+push local 2
 push constant 3
 eq
 or
