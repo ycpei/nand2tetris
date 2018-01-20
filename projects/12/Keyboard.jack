@@ -46,13 +46,15 @@ class Keyboard {
         var int key, key1;
         let key = 0;
         while (key = 0) {
-            key = Memory.peek(24576);
+            let key = Memory.peek(24576);
         }
-        key1 = key;
+        let key1 = key;
         while (key1 = key) {
-            key1 = Memory.peek(24576);
+            let key1 = Memory.peek(24576);
         }
-        Output.printChar(key);
+        if ((key > 31) & (key < 127) | (key = 128) | (key = 129)) {
+            do Output.printChar(key);
+        }
         return key;
     }
 
@@ -64,8 +66,8 @@ class Keyboard {
     function String readLine(String message) {
         var int c;
         var String s;
-        let s = "";
-        Output.printString(message);
+        let s = String.new(140);
+        do Output.printString(message);
         let c = Keyboard.readChar();
         while (~(c = 128)) {
             if (c = 129) {
@@ -87,35 +89,9 @@ class Keyboard {
      * entered text is detected). Also handles user backspaces. 
      */
     function int readInt(String message) {
-        var int n, i;
-        var char t;
         var String s;
-        let n = 0;
-        let neg = false;
+        do Output.printString(message);
         let s = Keyboard.readLine("");
-        let i = 0;
-        if (s.charAt(0) = 45) {
-            let i = 1;
-            let neg = true;
-        }
-        let t = s.charAt(i);
-        if ((t < 48) | (t > 57)) {
-            do Sys.error(3);
-            Output.printString("Keyboard.readInt: the input data is not number!");
-        }
-        let done = false;
-        while (~done) {
-            if ((s.charAt(i) > 47) & (s.charAt(i) < 58)) {
-                n = n * 10 + (t - 48);
-            } else {
-                done = true;
-            }
-            let i = i + 1;
-            done = done | (i < s.length());
-        }
-        if (neg) {
-            n = - n;
-        }
-        return n;
+        return s.intValue();
     }
 }

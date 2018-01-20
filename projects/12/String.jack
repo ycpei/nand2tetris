@@ -18,7 +18,9 @@ class String {
     /** constructs a new empty string with a maximum length of maxLength
      *  and initial length of 0. */
     constructor String new(int maxLength) {
-        let s = new Array(maxLength);
+        if (maxLength > 0) {
+            let s = Array.new(maxLength);
+        }
         let maxLen = maxLength;
         let len = 0;
         return this;
@@ -26,7 +28,9 @@ class String {
 
     /** Disposes this string. */
     method void dispose() {
-        do s.dispose();
+        if (maxLen > 0) {
+            do s.dispose();
+        }
         do Memory.deAlloc(this);
         return;
     }
@@ -39,8 +43,8 @@ class String {
     /** Returns the character at the j-th location of this string. */
     method char charAt(int j) {
         if ((j < 0) | (j + 1 > len)){
-            Output.printString("String.charAt: index out of range!");
-            Sys.error(5);
+            do Output.printString("String.charAt: index out of range!");
+            do Sys.error(5);
         }
         return s[j];
     }
@@ -48,8 +52,8 @@ class String {
     /** Sets the character at the j-th location of this string to c. */
     method void setCharAt(int j, char c) {
         if ((j < 0) | (j + 1 > len)){
-            Output.printString("String.setCharAt: index out of range!");
-            Sys.error(5);
+            do Output.printString("String.setCharAt: index out of range!");
+            do Sys.error(5);
         }
         let s[j] = c;
         return;
@@ -58,8 +62,8 @@ class String {
     /** Appends c to this string's end and returns this string. */
     method String appendChar(char c) {
         if (len = maxLen) {
-            Output.printString("String.appendChar: reached max length!");
-            Sys.error(5);
+            do Output.printString("String.appendChar: reached max length!");
+            do Sys.error(5);
         }
         let s[len] = c;
         let len = len + 1;
@@ -69,8 +73,8 @@ class String {
     /** Erases the last character from this string. */
     method void eraseLastChar() {
         if (len = 0){
-            Output.printString("String.eraseLastChar: string is already empty!");
-            Sys.error(5);
+            do Output.printString("String.eraseLastChar: string is already empty!");
+            do Sys.error(5);
         }
         let len = len - 1;
         return;
@@ -91,15 +95,15 @@ class String {
             let neg = false;
         }
         let c = s[i];
-        if ((t < 48) | (t > 57)) {
+        if ((c < 48) | (c > 57)) {
             do Sys.error(3);
             do Output.printString("String.intValue: the input data is not number!");
         }
         let done = false;
         while ((~done) & (i < len)) {
-            let t = s[i];
-            if ((t > 47) & (t < 58)) {
-                let n = n * 10 + (t - 48);
+            let c = s[i];
+            if ((c > 47) & (c < 58)) {
+                let n = n * 10 + (c - 48);
             } else {
                 let done = true;
             }
@@ -115,14 +119,14 @@ class String {
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {           //change Output.printInt after this
-        var int l;
+        var int x, i, y;
         var boolean neg;
         if (val < 0) { 
             let neg = true; 
-            len = 2;
+            let len = 2;
         } else {
             let neg = false;
-            len = 1;
+            let len = 1;
         }
         let x = Math.abs(val);
         if (x > 9999) {
@@ -135,21 +139,22 @@ class String {
             let len = len + 1;
         }}}}
         if (len > maxLen) {
-            Output.printString("String.setInt: val is too big for the string!");
-            Sys.error(5);
+            do Output.printString("String.setInt: val is too big for the string!");
+            do Sys.error(5);
         }
         if (x = 0) {
-            setCharAt(0, 48);
+            do setCharAt(0, 48);
             return;
         }
         if (neg) {
-            setCharAt(0, 45);
+            do setCharAt(0, 45);
         }
         let i = len - 1;
         while (x > 0) {
             let y = x / 10;
-            setCharAt(i, x - (y * 10) + 48);
+            do setCharAt(i, x - (y * 10) + 48);
             let x = y;
+            let i = i - 1;
         }
         return;
     }

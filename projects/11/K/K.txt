@@ -1,0 +1,25 @@
+from a to k
+
+- a title frame showing game name and instructions. space to continue.
+- a main frame showing the game running
+- a endofgame frame showing game results: win or lose
+
+- a Board class with cell being a 4 by 4 two-d array.
+- arrange strings according to an orientation: arrange(4 strings, dir)=cells
+  - dir: 0: align to left, 1: align to right, 2: align to top, 3:align to bottom
+  - e.g.: arrange({"abc", "bc", "dc", "efeh", 0}) gives the following board:
+         abc_
+         bc__
+         dc__
+         efeh
+  - arrange({"abc", "bc", "dc", "efeh", 0}, 3) gives the following
+     ___e
+     a__f
+     bbde
+     ccch
+- a new tile of 'a' or 'b' appears each turn somewhere, using some quasirandomisation e.g. (23 * n^2 + 79) mod 16.
+  - addtile(char, x, y)
+- the board transformation: board.trans(dir) = arrange(dir) . (fmap reduce) . getstring(dir). calls getstrings, then reduce on each row / column
+- board.getstrings(dir)= the strings according to direction dir. Inverse of arrange.
+- reduce(string)=string: reduce("baac")=="bbc"; reduce("aabb")=="bc"; and reduce("cbb")== "cc" instead of "d".
+- when one of the hjkl keys is pressed get the direction dir.

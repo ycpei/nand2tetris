@@ -1,0 +1,74 @@
+function KGame.new 0
+push constant 1
+call Memory.alloc 1
+pop pointer 0
+call Board.new 0
+pop this 0
+push this 0
+call Board.draw 1
+pop temp 0
+push pointer 0
+return
+function KGame.dispose 0
+push argument 0
+pop pointer 0
+push this 0
+call Board.dispose 1
+pop temp 0
+push pointer 0
+call Memory.deAlloc 1
+pop temp 0
+push constant 0
+return
+function KGame.run 3
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+push constant 0
+pop local 2
+label run.While0
+push local 2
+not
+not
+if-goto run.EndWhile0
+label run.While0.While0
+push local 0
+push constant 130
+lt
+push local 0
+push constant 133
+gt
+or
+not
+if-goto run.While0.EndWhile0
+call Keyboard.keyPressed 0
+pop local 0
+goto run.While0.While0
+label run.While0.EndWhile0
+push local 0
+push constant 130
+sub
+pop local 1
+label run.While0.While1
+push local 0
+push constant 0
+eq
+not
+not
+if-goto run.While0.EndWhile1
+call Keyboard.keyPressed 0
+pop local 0
+goto run.While0.While1
+label run.While0.EndWhile1
+push this 0
+push local 1
+call Board.next 2
+pop temp 0
+push this 0
+call Board.draw 1
+pop temp 0
+goto run.While0
+label run.EndWhile0
+push constant 0
+return

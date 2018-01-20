@@ -22,6 +22,7 @@ class Output {
 
     /** Initializes the screen, and locates the cursor at the screen's top-left. */
     function void init() {
+        do Output.initMap();
         do Output.moveCursor(0, 0);
         return;
     }
@@ -74,7 +75,7 @@ class Output {
         do Output.create(64,30,51,51,59,59,59,27,3,30,0,0);  // @
         do Output.create(63,30,51,51,24,12,12,0,12,12,0,0);  // ?
 
-        do Output.create(65,12,12,30,30,51,51,63,51,51,0,0);          // A ** TO BE FILLED **
+        do Output.create(65,12,12,30,30,51,51,63,51,51,0,0); // A
         do Output.create(66,31,51,51,51,31,51,51,51,31,0,0); // B
         do Output.create(67,28,54,35,3,3,3,35,54,28,0,0);    // C
         do Output.create(68,15,27,51,51,51,51,51,27,15,0,0); // D
@@ -146,9 +147,9 @@ class Output {
     // Creates the character map array of the given character index, using the given values.
     function void create(int index, int a, int b, int c, int d, int e,
                          int f, int g, int h, int i, int j, int k) {
-	var Array map;
+        var Array map;
 
-	let map = Array.new(11);
+        let map = Array.new(11);
         let charMaps[index] = map;
 
         let map[0] = a;
@@ -180,8 +181,8 @@ class Output {
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
         var int x, y;
-        let x = cursorI * 8;
-        let y = cursorJ * 11;
+        let x = cursorJ * 8;
+        let y = cursorI * 11;
         do Screen.setColor(false);
         do Screen.drawRectangle(x, y, x + 7, y + 10);
         let x = j * 8;
@@ -198,19 +199,32 @@ class Output {
     function void printChar(char c) {
         var int k, x, y, addr;
         var Array cm;
-        if (c = 8) {                                //backspace
+        if (c = 129) {
             do Output.backSpace();
             return;
-        } 
-        if (c = 10) {                               //newline
+        }
+        if (cursorI = 22) {
+            if (c = 128) {
+                return;
+            }
+            if (cursorJ = 63) {
+                return;
+            }
+        }
+        if (c = 128) {
             do Output.println();
             return;
         }
         let k = 0;
-        let x = cursorI / 2;
-        let y = cursorI - (x * 2);                  // y = 0: lsb, y = 1: msb
-        let addr = cursorJ * 352 + x + 16384;
+        let x = cursorJ / 2;
+        let y = cursorJ - (x * 2);                  // y = 0: lsb, y = 1: msb
+        let addr = cursorI * 352 + x + 16384;
         let cm = Output.getMap(c);
+        if (cursorJ = 63) {
+            do Output.moveCursor(cursorI + 1, 0);
+        } else {
+            do Output.moveCursor(cursorI, cursorJ + 1);
+        }
         while (k < 11) {
             if (y = 0){
                 do Memory.poke(addr, Memory.peek(addr) & (-128) + cm[k]);
@@ -219,11 +233,6 @@ class Output {
             }
             let k = k + 1;
             let addr = addr + 32;
-        }
-        if (cursorJ = 63) {
-            do Output.moveCursor(cursorI + 1, 0);
-        } else {
-            do Output.moveCursor(cursorI, cursorJ + 1);
         }
         return;
     }
@@ -245,43 +254,27 @@ class Output {
     /** Displays the given integer starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
-        var int n, k;
         var String s;
-        if (i = 0) {
-            do Output.printChar(48);
-            return;
-        }
-        let n = i;
-        if (i < 0) {
-            do Output.printChar(45);
-            let n = -n;
-        }
-        let s = "";
-        while (n > 0) {
-            let k = n / 10;
-            do s.appendChar(48 + n - (k * 10));
-            let n = k;
-        }
-        let k = s.length();
-        while (k > 0) {
-            do Output.printChar(s.charAt(k));
-            let k = k - 1;
-        }
+        let s = String.new(6);
+        do s.setInt(i);
+        do Output.printString(s);
         return;
     }
 
     /** Advances the cursor to the beginning of the next line. */
     function void println() {
-        do Output.moveCursor(cursorI, 0);   
+        if (cursorI < 22) {
+            do Output.moveCursor(cursorI + 1, 0);   
+        }
         return;
     }
 
     /** Moves the cursor one column back. */
     function void backSpace() {
         if (cursorJ > 0) {
-            do Output.moveCursor(cursorI - 1, 63);
-        } else {
             do Output.moveCursor(cursorI, cursorJ - 1);
+        } else {
+            do Output.moveCursor(cursorI - 1, 63);
         }
         return;
     }

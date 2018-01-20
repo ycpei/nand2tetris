@@ -1,0 +1,1183 @@
+function Board.new 3
+push constant 3
+call Memory.alloc 1
+pop pointer 0
+push constant 4
+call Array.new 1
+pop this 0
+push constant 0
+pop local 0
+label new.While0
+push local 0
+push constant 4
+lt
+not
+if-goto new.EndWhile0
+push constant 0
+pop local 1
+push constant 4
+call Array.new 1
+push this 0
+push local 0
+add
+pop pointer 1
+pop that 0
+push this 0
+push local 0
+add
+pop pointer 1
+push that 0
+pop local 2
+label new.While0.While0
+push local 1
+push constant 4
+lt
+not
+if-goto new.While0.EndWhile0
+push constant 32
+push local 2
+push local 1
+add
+pop pointer 1
+pop that 0
+push local 1
+push constant 1
+add
+pop local 1
+goto new.While0.While0
+label new.While0.EndWhile0
+push local 0
+push constant 1
+add
+pop local 0
+goto new.While0
+label new.EndWhile0
+push this 0
+push constant 0
+add
+pop pointer 1
+push that 0
+pop local 2
+push constant 65
+push local 2
+push constant 0
+add
+pop pointer 1
+pop that 0
+push constant 0
+pop this 1
+push constant 0
+pop this 2
+push pointer 0
+return
+function Board.arrange 0
+push argument 0
+pop pointer 0
+push argument 2
+not
+if-goto arrange.Else0
+push pointer 0
+push argument 1
+push this 0
+call Board.deepcopy 3
+pop temp 0
+goto arrange.Endif0
+label arrange.Else0
+push pointer 0
+push argument 1
+push this 0
+call Board.transpose 3
+pop temp 0
+label arrange.Endif0
+push pointer 0
+push argument 1
+call Board.dispose4 2
+pop temp 0
+push constant 0
+return
+function Board.copy 1
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+label copy.While0
+push local 0
+push constant 4
+lt
+not
+if-goto copy.EndWhile0
+push argument 1
+push local 0
+add
+pop pointer 1
+push that 0
+push argument 2
+push local 0
+add
+pop pointer 1
+pop that 0
+push local 0
+push constant 1
+add
+pop local 0
+goto copy.While0
+label copy.EndWhile0
+push constant 0
+return
+function Board.deepcopy 1
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+label deepcopy.While0
+push local 0
+push constant 4
+lt
+not
+if-goto deepcopy.EndWhile0
+push pointer 0
+push argument 1
+push local 0
+add
+pop pointer 1
+push that 0
+push argument 2
+push local 0
+add
+pop pointer 1
+push that 0
+call Board.copy 3
+pop temp 0
+push local 0
+push constant 1
+add
+pop local 0
+goto deepcopy.While0
+label deepcopy.EndWhile0
+push constant 0
+return
+function Board.transpose 4
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+label transpose.While0
+push local 0
+push constant 4
+lt
+not
+if-goto transpose.EndWhile0
+push constant 0
+pop local 1
+push argument 2
+push local 0
+add
+pop pointer 1
+push that 0
+pop local 2
+label transpose.While0.While0
+push local 1
+push constant 4
+lt
+not
+if-goto transpose.While0.EndWhile0
+push argument 1
+push local 1
+add
+pop pointer 1
+push that 0
+pop local 3
+push local 3
+push local 0
+add
+pop pointer 1
+push that 0
+push local 2
+push local 1
+add
+pop pointer 1
+pop that 0
+push local 1
+push constant 1
+add
+pop local 1
+goto transpose.While0.While0
+label transpose.While0.EndWhile0
+push local 0
+push constant 1
+add
+pop local 0
+goto transpose.While0
+label transpose.EndWhile0
+push constant 0
+return
+function Board.dispose4 2
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+label dispose4.While0
+push local 0
+push constant 4
+lt
+not
+if-goto dispose4.EndWhile0
+push argument 1
+push local 0
+add
+pop pointer 1
+push that 0
+pop local 1
+push local 1
+call Array.dispose 1
+pop temp 0
+push local 0
+push constant 1
+add
+pop local 0
+goto dispose4.While0
+label dispose4.EndWhile0
+push argument 1
+call Array.dispose 1
+pop temp 0
+push constant 0
+return
+function Board.new4 2
+push argument 0
+pop pointer 0
+push constant 4
+call Array.new 1
+pop local 0
+push constant 0
+pop local 1
+label new4.While0
+push local 1
+push constant 4
+lt
+not
+if-goto new4.EndWhile0
+push constant 4
+call Array.new 1
+push local 0
+push local 1
+add
+pop pointer 1
+pop that 0
+push local 1
+push constant 1
+add
+pop local 1
+goto new4.While0
+label new4.EndWhile0
+push local 0
+return
+function Board.getStrips 1
+push argument 0
+pop pointer 0
+push pointer 0
+call Board.new4 1
+pop local 0
+push argument 1
+not
+if-goto getStrips.Else0
+push pointer 0
+push this 0
+push local 0
+call Board.deepcopy 3
+pop temp 0
+goto getStrips.Endif0
+label getStrips.Else0
+push pointer 0
+push this 0
+push local 0
+call Board.transpose 3
+pop temp 0
+label getStrips.Endif0
+push local 0
+return
+function Board.align 2
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+push constant 0
+pop local 1
+push argument 2
+not
+if-goto align.Else0
+label align.Else0.While0
+push local 0
+push constant 4
+lt
+not
+if-goto align.Else0.EndWhile0
+push argument 1
+push local 0
+add
+pop pointer 1
+push that 0
+push constant 64
+gt
+not
+if-goto align.Else0.While0.Else0
+push argument 1
+push local 0
+add
+pop pointer 1
+push that 0
+push argument 1
+push local 1
+add
+pop pointer 1
+pop that 0
+push local 1
+push constant 1
+add
+pop local 1
+label align.Else0.While0.Else0
+push local 0
+push constant 1
+add
+pop local 0
+goto align.Else0.While0
+label align.Else0.EndWhile0
+label align.Else0.While1
+push local 1
+push constant 4
+lt
+not
+if-goto align.Else0.EndWhile1
+push constant 32
+push argument 1
+push local 1
+add
+pop pointer 1
+pop that 0
+push local 1
+push constant 1
+add
+pop local 1
+goto align.Else0.While1
+label align.Else0.EndWhile1
+goto align.Endif0
+label align.Else0
+label align.If0.While0
+push local 0
+push constant 4
+lt
+not
+if-goto align.If0.EndWhile0
+push argument 1
+push constant 3
+push local 0
+sub
+add
+pop pointer 1
+push that 0
+push constant 64
+gt
+not
+if-goto align.If0.While0.Else0
+push argument 1
+push constant 3
+push local 0
+sub
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 3
+push local 1
+sub
+add
+pop pointer 1
+pop that 0
+push local 1
+push constant 1
+add
+pop local 1
+label align.If0.While0.Else0
+push local 0
+push constant 1
+add
+pop local 0
+goto align.If0.While0
+label align.If0.EndWhile0
+label align.If0.While1
+push local 1
+push constant 4
+lt
+not
+if-goto align.If0.EndWhile1
+push constant 32
+push argument 1
+push constant 3
+push local 1
+sub
+add
+pop pointer 1
+pop that 0
+push local 1
+push constant 1
+add
+pop local 1
+goto align.If0.While1
+label align.If0.EndWhile1
+label align.Endif0
+push argument 1
+return
+function Board.reduce 0
+push argument 0
+pop pointer 0
+push argument 1
+push constant 0
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 1
+add
+pop pointer 1
+push that 0
+eq
+push argument 1
+push constant 2
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 3
+add
+pop pointer 1
+push that 0
+eq
+and
+push argument 1
+push constant 0
+add
+pop pointer 1
+push that 0
+push constant 64
+gt
+and
+push argument 1
+push constant 2
+add
+pop pointer 1
+push that 0
+push constant 64
+gt
+and
+not
+if-goto reduce.Else0
+push argument 2
+not
+if-goto reduce.Else0.Else0
+push argument 1
+push constant 0
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 0
+add
+pop pointer 1
+pop that 0
+push argument 1
+push constant 2
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 1
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 2
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 3
+add
+pop pointer 1
+pop that 0
+goto reduce.Else0.Endif0
+label reduce.Else0.Else0
+push argument 1
+push constant 3
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 3
+add
+pop pointer 1
+pop that 0
+push argument 1
+push constant 1
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 2
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 1
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 0
+add
+pop pointer 1
+pop that 0
+label reduce.Else0.Endif0
+push argument 1
+return
+label reduce.Else0
+push argument 1
+push constant 0
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 1
+add
+pop pointer 1
+push that 0
+eq
+push argument 1
+push constant 0
+add
+pop pointer 1
+push that 0
+push constant 64
+gt
+and
+not
+if-goto reduce.Else1
+push argument 2
+not
+if-goto reduce.Else1.Else0
+push argument 1
+push constant 0
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 0
+add
+pop pointer 1
+pop that 0
+push argument 1
+push constant 2
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 1
+add
+pop pointer 1
+pop that 0
+push argument 1
+push constant 3
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 2
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 3
+add
+pop pointer 1
+pop that 0
+goto reduce.Else1.Endif0
+label reduce.Else1.Else0
+push argument 1
+push constant 1
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 1
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 0
+add
+pop pointer 1
+pop that 0
+label reduce.Else1.Endif0
+push argument 1
+return
+label reduce.Else1
+push argument 1
+push constant 2
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 3
+add
+pop pointer 1
+push that 0
+eq
+push argument 1
+push constant 2
+add
+pop pointer 1
+push that 0
+push constant 64
+gt
+and
+not
+if-goto reduce.Else2
+push argument 2
+not
+if-goto reduce.Else2.Else0
+push argument 1
+push constant 2
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 2
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 3
+add
+pop pointer 1
+pop that 0
+goto reduce.Else2.Endif0
+label reduce.Else2.Else0
+push argument 1
+push constant 3
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 3
+add
+pop pointer 1
+pop that 0
+push argument 1
+push constant 1
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 2
+add
+pop pointer 1
+pop that 0
+push argument 1
+push constant 0
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 1
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 0
+add
+pop pointer 1
+pop that 0
+label reduce.Else2.Endif0
+push argument 1
+return
+label reduce.Else2
+push argument 1
+push constant 1
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 2
+add
+pop pointer 1
+push that 0
+eq
+push argument 1
+push constant 1
+add
+pop pointer 1
+push that 0
+push constant 64
+gt
+and
+not
+if-goto reduce.Else3
+push argument 2
+not
+if-goto reduce.Else3.Else0
+push argument 1
+push constant 1
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 1
+add
+pop pointer 1
+pop that 0
+push argument 1
+push constant 3
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 2
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 3
+add
+pop pointer 1
+pop that 0
+goto reduce.Else3.Endif0
+label reduce.Else3.Else0
+push argument 1
+push constant 2
+add
+pop pointer 1
+push that 0
+push constant 1
+add
+push argument 1
+push constant 2
+add
+pop pointer 1
+pop that 0
+push argument 1
+push constant 0
+add
+pop pointer 1
+push that 0
+push argument 1
+push constant 1
+add
+pop pointer 1
+pop that 0
+push constant 32
+push argument 1
+push constant 0
+add
+pop pointer 1
+pop that 0
+label reduce.Else3.Endif0
+push argument 1
+return
+label reduce.Else3
+push argument 1
+return
+function Board.addTile 5
+push argument 0
+pop pointer 0
+push this 2
+push constant 25173
+call Math.multiply 2
+push constant 13849
+add
+pop this 2
+push this 2
+push constant 0
+lt
+not
+if-goto addTile.Else0
+push this 2
+neg
+pop this 2
+label addTile.Else0
+push this 2
+push this 2
+push constant 2
+call Math.divide 2
+push constant 2
+call Math.multiply 2
+sub
+push constant 0
+eq
+not
+if-goto addTile.Else1
+push constant 1
+pop local 3
+goto addTile.Endif1
+label addTile.Else1
+push constant 1
+neg
+pop local 3
+label addTile.Endif1
+push this 2
+push this 2
+push constant 16
+call Math.divide 2
+push constant 16
+call Math.multiply 2
+sub
+pop this 2
+push this 2
+push constant 4
+call Math.divide 2
+pop local 1
+push this 2
+push constant 4
+push local 1
+call Math.multiply 2
+sub
+pop local 2
+push this 0
+push local 1
+add
+pop pointer 1
+push that 0
+pop local 0
+push constant 65
+pop local 4
+label addTile.While2
+push local 0
+push local 2
+add
+pop pointer 1
+push that 0
+push constant 64
+gt
+not
+if-goto addTile.EndWhile2
+push this 2
+push local 3
+add
+pop this 2
+push this 2
+push constant 0
+lt
+not
+if-goto addTile.While2.Else0
+push constant 15
+pop this 2
+label addTile.While2.Else0
+push this 2
+push this 2
+push constant 16
+call Math.divide 2
+push constant 16
+call Math.multiply 2
+sub
+pop this 2
+push this 2
+push constant 4
+call Math.divide 2
+pop local 1
+push this 2
+push constant 4
+push local 1
+call Math.multiply 2
+sub
+pop local 2
+push this 0
+push local 1
+add
+pop pointer 1
+push that 0
+pop local 0
+push constant 131
+push local 4
+sub
+pop local 4
+goto addTile.While2
+label addTile.EndWhile2
+push local 4
+push local 0
+push local 2
+add
+pop pointer 1
+pop that 0
+push constant 0
+return
+function Board.transform 4
+push argument 0
+pop pointer 0
+push argument 1
+push constant 0
+eq
+push argument 1
+push constant 1
+eq
+or
+not
+if-goto transform.Else0
+push constant 1
+neg
+pop local 1
+goto transform.Endif0
+label transform.Else0
+push constant 0
+pop local 1
+label transform.Endif0
+push argument 1
+push constant 0
+eq
+push argument 1
+push constant 2
+eq
+or
+not
+if-goto transform.Else1
+push constant 1
+neg
+pop local 0
+goto transform.Endif1
+label transform.Else1
+push constant 0
+pop local 0
+label transform.Endif1
+push pointer 0
+push local 0
+call Board.getStrips 2
+pop local 2
+push constant 0
+pop local 3
+label transform.While2
+push local 3
+push constant 4
+lt
+not
+if-goto transform.EndWhile2
+push pointer 0
+push pointer 0
+push local 2
+push local 3
+add
+pop pointer 1
+push that 0
+push local 1
+call Board.align 3
+push local 1
+call Board.reduce 3
+push local 2
+push local 3
+add
+pop pointer 1
+pop that 0
+push local 3
+push constant 1
+add
+pop local 3
+goto transform.While2
+label transform.EndWhile2
+push pointer 0
+push local 2
+push local 0
+call Board.arrange 3
+pop temp 0
+push constant 0
+return
+function Board.next 0
+push argument 0
+pop pointer 0
+push this 1
+push constant 1
+add
+pop this 1
+push pointer 0
+push argument 1
+call Board.transform 2
+pop temp 0
+push pointer 0
+call Board.addTile 1
+pop temp 0
+push constant 0
+return
+function Board.draw 5
+push argument 0
+pop pointer 0
+push constant 9
+pop local 0
+push constant 30
+pop local 1
+push local 0
+push constant 1
+sub
+push local 1
+push constant 1
+sub
+call Output.moveCursor 2
+pop temp 0
+push constant 6
+call String.new 1
+push constant 43
+call String.appendChar 2
+push constant 45
+call String.appendChar 2
+push constant 45
+call String.appendChar 2
+push constant 45
+call String.appendChar 2
+push constant 45
+call String.appendChar 2
+push constant 43
+call String.appendChar 2
+call Output.printString 1
+pop temp 0
+push local 0
+push constant 4
+add
+push local 1
+push constant 1
+sub
+call Output.moveCursor 2
+pop temp 0
+push constant 6
+call String.new 1
+push constant 43
+call String.appendChar 2
+push constant 45
+call String.appendChar 2
+push constant 45
+call String.appendChar 2
+push constant 45
+call String.appendChar 2
+push constant 45
+call String.appendChar 2
+push constant 43
+call String.appendChar 2
+call Output.printString 1
+pop temp 0
+push constant 0
+pop local 2
+label draw.While0
+push local 2
+push constant 4
+lt
+not
+if-goto draw.EndWhile0
+push constant 0
+pop local 3
+push local 0
+push local 2
+add
+push local 1
+push constant 1
+sub
+call Output.moveCursor 2
+pop temp 0
+push constant 1
+call String.new 1
+push constant 124
+call String.appendChar 2
+call Output.printString 1
+pop temp 0
+push this 0
+push local 2
+add
+pop pointer 1
+push that 0
+pop local 4
+label draw.While0.While0
+push local 3
+push constant 4
+lt
+not
+if-goto draw.While0.EndWhile0
+push local 4
+push local 3
+add
+pop pointer 1
+push that 0
+call Output.printChar 1
+pop temp 0
+push local 3
+push constant 1
+add
+pop local 3
+goto draw.While0.While0
+label draw.While0.EndWhile0
+push constant 1
+call String.new 1
+push constant 124
+call String.appendChar 2
+call Output.printString 1
+pop temp 0
+push local 2
+push constant 1
+add
+pop local 2
+goto draw.While0
+label draw.EndWhile0
+push local 0
+push constant 6
+add
+push local 1
+push constant 2
+sub
+call Output.moveCursor 2
+pop temp 0
+push constant 6
+call String.new 1
+push constant 84
+call String.appendChar 2
+push constant 117
+call String.appendChar 2
+push constant 114
+call String.appendChar 2
+push constant 110
+call String.appendChar 2
+push constant 58
+call String.appendChar 2
+push constant 32
+call String.appendChar 2
+call Output.printString 1
+pop temp 0
+push this 1
+call Output.printInt 1
+pop temp 0
+push constant 0
+return
+function Board.dispose 0
+push argument 0
+pop pointer 0
+push pointer 0
+call Memory.deAlloc 1
+pop temp 0
+push constant 0
+return
