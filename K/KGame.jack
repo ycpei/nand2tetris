@@ -1,0 +1,63 @@
+/**
+- K: a 2048 clone written in Jack language
+- Coursework for Nand2Tetris (http://nand2tetris.org/)
+- Author: Yuchen Pei (me@ypei.me)
+- This file: the game I/O for the K game
+*/
+class KGame{
+    field Board board;
+
+    constructor KGame new() {
+        let board = Board.new();
+        do board.draw();
+        return this;
+    }
+
+    method void dispose() {
+        do board.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void run() {
+        var int key, key1, st;
+        var boolean exit;
+        let exit = false;
+        while (~exit) {
+            let st = board.getStatus();
+            let key = 0;
+            while (key = 0) {
+                let key = Keyboard.keyPressed();
+            }
+            let key1 = key;
+            while (~(key1 = 0)) {
+                let key1 = Keyboard.keyPressed();
+            }
+            if (key = 81) {
+                let exit = true;
+            } else { if ((st = 0)) {
+                do Screen.clearScreen();
+                do board.setStatus(1);
+                do board.draw();
+            } else { if ((st = 2) | (st = 3)) {
+                do Screen.clearScreen();
+                do board.setStatus(0);
+                do board.draw();
+                do board.initBoard();
+            } else { if (key = 82) {                // r for restart
+                do Screen.clearScreen();
+                do board.initBoard();
+                do board.draw();
+            } else { if ((key > 129) & (key < 134)) {
+                do Screen.clearScreen();
+                do board.next(key - 130);
+                do board.draw();
+                do Sys.wait(300);
+                do Screen.clearScreen();
+                do board.addTile();
+                do board.draw();
+            }}}}}
+        }
+        return;
+    }
+}

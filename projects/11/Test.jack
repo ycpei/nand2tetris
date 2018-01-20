@@ -1,7 +1,0 @@
-class Test{
-method void something(){
-}
-constructor Test new(){
-  do something();
-}
-}

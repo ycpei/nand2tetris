@@ -1,0 +1,333 @@
+/**
+- K: a 2048 clone written in Jack language
+- Coursework for Nand2Tetris (http://nand2tetris.org/)
+- Author: Yuchen Pei (me@ypei.me)
+- This file: the board model for the K game
+*/
+class Board {
+    field Array grid;
+    field int nTurn, seed, status;      // status: 0: begin game; 1: in game; 2: lose; 3: win; 
+    static String boardBar, strLost, strCont, strGameOver, strWon, strTurn;
+
+    constructor Board new() {
+        var int i;
+        let grid = Array.new(4);
+        let i = 0;
+        while (i < 4) {
+            let grid[i] = Array.new(4);
+            let i = i + 1;
+        }
+        do initBoard();
+        let seed = 0;
+        return this;
+    }
+
+    function void init() {
+        let boardBar = "+----+";
+        let strLost = "You lost!";
+        let strWon = "You won!";
+        let strCont = "Press any key to continue";
+        let strGameOver = "Game over!";
+        let strTurn = "Turn: ";
+        return;
+    }
+
+    method void initBoard() {
+        var int i, j;
+        var Array t;
+        let i = 0;
+        while (i < 4) {
+            let j = 0;
+            let t = grid[i];
+            while (j < 4) {
+                let t[j] = 32;
+                let j = j + 1;
+            }
+            let i = i + 1;
+        }
+        let t = grid[0];
+        let t[0] = 65;
+        let nTurn = 0;
+        let status = 0;
+        return;
+    }
+
+
+    method void transpose() {
+        do exch(0, 1);
+        do exch(0, 2);
+        do exch(0, 3);
+        do exch(1, 2);
+        do exch(1, 3);
+        do exch(2, 3);
+        return;
+    }
+
+    method void exch(int i, int j){
+        var int t;
+        var Array s1, s2;
+        let s1 = grid[i];
+        let s2 = grid[j];
+        let t = s1[j];
+        let s1[j] = s2[i];
+        let s2[i] = t;
+        return;
+    }
+
+    method void align(Array xs, boolean left){
+        var int i, j;
+        let i = 0;
+        let j = 0;
+        if (left) {
+            while (i < 4) {
+                if (xs[i] > 64) {
+                    let xs[j] = xs[i];
+                    let j = j + 1;
+                }
+                let i = i + 1;
+            }
+            while (j < 4) {
+                let xs[j] = 32;
+                let j = j + 1;
+            }
+        } else {
+            while (i < 4) {
+                if (xs[3 - i] > 64) {
+                    let xs[3 - j] = xs[3 - i];
+                    let j = j + 1;
+                }
+                let i = i + 1;
+            }
+            while (j < 4) {
+                let xs[3 - j] = 32;
+                let j = j + 1;
+            }
+        }
+        return;
+    }
+
+    method void reduce(Array xs, boolean left){
+        if ((xs[0] = xs[1]) & (xs[2] = xs[3]) & (xs[0] > 64) & (xs[2] > 64)) {
+            if (left) {
+                let xs[0] = xs[0] + 1;
+                let xs[1] = xs[2] + 1; 
+                let xs[2] = 32;
+                let xs[3] = 32;
+            } else {
+                let xs[3] = xs[3] + 1;
+                let xs[2] = xs[1] + 1;
+                let xs[1] = 32;
+                let xs[0] = 32;
+            }
+            return;
+        }
+        if ((xs[0] = xs[1]) & (xs[0] > 64)) {
+            if (left) {
+                let xs[0] = xs[0] + 1;
+                let xs[1] = xs[2];
+                let xs[2] = xs[3];
+                let xs[3] = 32;
+            } else {
+                let xs[1] = xs[1] + 1;
+                let xs[0] = 32;
+            }
+            return;
+        }
+        if ((xs[2] = xs[3]) & (xs[2] > 64)) {
+            if (left) {
+                let xs[2] = xs[2] + 1;
+                let xs[3] = 32;
+            } else {
+                let xs[3] = xs[3] + 1;
+                let xs[2] = xs[1];
+                let xs[1] = xs[0];
+                let xs[0] = 32;
+            }
+            return;
+        }
+        if ((xs[1] = xs[2]) & (xs[1] > 64)) {
+            if (left) {
+                let xs[1] = xs[1] + 1;
+                let xs[2] = xs[3];
+                let xs[3] = 32;
+            } else {
+                let xs[2] = xs[2] + 1;
+                let xs[1] = xs[0];
+                let xs[0] = 32;
+            }
+            return;
+        }
+        return;
+    }
+
+    method void addTile(){
+        var Array t;
+        var int r, c, parity, newTile;
+        /*
+        let t = grid[1];
+        if (t[1] = 32) {
+            let t[1] = 65;
+        }
+        */
+        
+        if (~(status = 1)) {
+            return;
+        }
+
+        let seed = seed * 25173 + 13849;
+        if (seed < 0) {
+            let seed = - seed;
+        }
+
+        if (seed - (seed / 2 * 2) = 0) {
+            let parity = 1;
+        } else {
+            let parity = -1;
+        }
+
+        let seed = seed - (seed / 16 * 16);
+        let r = seed / 4;
+        let c = seed - (4 * r);
+        let t = grid[r];
+        let newTile = 65;
+
+        while (t[c] > 64){
+            let seed = seed + parity;
+            if (seed < 0) {
+                let seed = 15;
+            }
+            let seed = seed - (seed / 16 * 16);
+            let r = seed / 4;
+            let c = seed - (4 * r);
+            let t = grid[r];
+            let newTile = 131 - newTile;
+        }
+        let t[c] = newTile;
+        return;
+    }
+
+    method void transform(char dir){
+        var boolean isVertical, left;
+        var int i;
+        if ((dir = 0) | (dir = 1)) {
+            let left = true;
+        } else {
+            let left = false;
+        }
+        if ((dir = 0) | (dir = 2)) {
+            let isVertical = false;
+        } else {
+            let isVertical = true;
+        }
+        if (isVertical) {
+            do transpose();
+        }
+        let i = 0;
+        while (i < 4) {
+            do align(grid[i], left);
+            do reduce(grid[i], left);
+            let i = i + 1;
+        }
+        if (isVertical) {
+            do transpose();
+        }
+        return;
+    }
+
+    method void next(int dir){
+        let nTurn = nTurn + 1;
+        do transform(dir);
+        do updateStatus();
+        return;
+    }
+
+    method int getStatus(){
+        return status;
+    }
+
+    method void setStatus(int x){
+        let status = x;
+        return;
+    }
+
+    method void updateStatus(){        
+        var int i, j;
+        var Array r;
+        let i = 0;
+        while (i < 4) {
+            let r = grid[i];
+            let j = 0;
+            while (j < 4) {
+                if (r[j] = 75) {
+                    let status = 3;
+                    return;
+                }
+                if (r[j] = 32) {
+                    let status = 1;
+                    return;
+                }
+                let j = j + 1;
+            }
+            let i = i + 1;
+        }
+        let status = 2;
+        return;
+    }
+
+    method void draw(){
+        var int r, c, i, j;
+        var Array t;
+        let r = 9;
+        let c = 30;
+
+        if (status = 0) {
+            do Output.moveCursor(r - 1, c - 1);
+            do Output.printChar(75);
+            do Output.moveCursor(r + 1, c - 1);
+            do Output.printString(strCont);
+        } else { if (status = 2) {
+            do Output.moveCursor(r - 1, c - 1);
+            do Output.printString(strGameOver);
+            do Output.moveCursor(r + 1, c - 1);
+            do Output.printString(strLost);
+            do Output.moveCursor(r + 3, c - 1);
+            do Output.printString(strCont);
+        } else { if (status = 3) {
+            do Output.moveCursor(r - 1, c - 1);
+            do Output.printString(strGameOver);
+            do Output.moveCursor(r + 1, c - 1);
+            do Output.printString(strWon);
+            do Output.moveCursor(r + 3, c - 1);
+            do Output.printString(strCont);
+        } else { 
+            do Output.moveCursor(r - 1, c - 1);
+            do Output.printString(boardBar);
+            do Output.moveCursor(r + 4, c - 1);
+            do Output.printString(boardBar);
+
+            let i = 0;
+            while (i < 4) {
+                let j = 0;
+                do Output.moveCursor(r + i, c - 1);
+                do Output.printChar(124);       // 124 is |
+                let t = grid[i];
+                while (j < 4) {
+                    do Output.printChar(t[j]);
+                    let j = j + 1;
+                }
+                do Output.printChar(124);
+                let i = i + 1;
+            }
+
+            do Output.moveCursor(r + 6, c - 2);
+            do Output.printString(strTurn);
+            do Output.printInt(nTurn);
+        }}}
+        return;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+}
