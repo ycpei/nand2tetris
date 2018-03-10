@@ -1,5 +1,5 @@
-My coursework for the [Nand2Tetris Course](http://nand2tetris.org/).
-Of these files my work is licensed under GPLv2+.
+My coursework for the [Nand2Tetris Course](http://nand2tetris.org/), including a 2048 clone written in the Jack language and Haskell implementation of the Hack assembler, Jack Compiler and VM Translator
+Of these files my work is licensed under GPLv3+.
 
 File descriptions:
 - `asms`: The Hack assembly programs in [Project 4](http://nand2tetris.org/04.php).
